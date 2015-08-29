@@ -12,7 +12,7 @@ run_incremental_realistic_rebalanced_label = 1;
 
 % Random dataset
 
-ntr = 1000;     % Number of training samples
+ntr = 10000;     % Number of training samples
 nte = 1000;     % Number of test samples
 n = ntr + nte;  % Total number of examples
 d = 100;        % Dimensionality
@@ -133,7 +133,7 @@ retrain = 1;
 nuptr = 80;     % Number of training examples per update
 nupval = 20;    % Number of validation examples per update
 currUpIdx = 1;  % Current index of the first example of the update minibatch
-nlambda = 7;
+nlambda = 8;
 
 if run_incremental_balanced_parallel == 1
 
@@ -142,6 +142,9 @@ if run_incremental_balanced_parallel == 1
     
     R = cell(1,nlambda);
     testAcc = cell(1,nlambda);
+    lstarqueue = [];
+    bestAccqueue = [];
+    
     for k = 1:numUpdates
         
         % Get data chunks
@@ -162,7 +165,7 @@ if run_incremental_balanced_parallel == 1
             XtY = XtY + Xuptr' * Yuptr;
         end
         
-        lstar = 0;      % Best lambda
+        lstar = max(lrng);      % Best lambda
         bestAcc = 0;    % Highest accuracy    
 
         for lidx = 1:nlambda
@@ -205,6 +208,9 @@ if run_incremental_balanced_parallel == 1
             end
         end
         
+        lstarqueue = [lstarqueue , lstar];
+        bestAccqueue = [bestAccqueue , bestAcc];
+        
        %% Retraining
 
         if retrain == 1
@@ -242,6 +248,31 @@ if run_incremental_balanced_parallel == 1
             testAcc{lidx} = [testAcc{lidx} , (numCorrect / nte)];
         end
     end
+    
+    %% Plots
+    
+    % Test Accuracy evolution for different lambdas
+    figure
+    mesh(cell2mat(testAcc'))
+    title('Test Accuracy evolution for different \lambda')
+    xlabel('k')    
+    ylabel('\lambda')
+    zlabel('Accuracy')    
+
+    % Best lambdas evolution
+    figure
+    semilogy(lstarqueue)
+    title('\lambda* evolution for different \lambda')
+    xlabel('k')    
+    ylabel('\lambda*')
+    
+    % Best accuracies evolution
+    figure
+    plot(bestAccqueue)
+    title('Best validation accuracies evolution for different \lambda')
+    xlabel('k')    
+    ylabel('Best validation accuracies')
+
 end
 
 %% Batch realistic with loss rebalancing
