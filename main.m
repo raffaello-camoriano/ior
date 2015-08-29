@@ -129,15 +129,119 @@ end
 %% Incremental balanced parallel
 
 % Configuration
+retrain = 1;
 nuptr = 80;     % Number of training examples per update
 nupval = 20;    % Number of validation examples per update
 currUpIdx = 1;  % Current index of the first example of the update minibatch
+nlambda = 7;
 
 if run_incremental_balanced_parallel == 1
 
-    lrng = logspace(1 , -6 , 7);    % Lambda range
-    k = ntr / (nuptr + nupval);     % Number of update steps
+    lrng = logspace(1 , -6 , nlambda);    % Lambda range
+    numUpdates = floor(ntr / (nuptr + nupval));     % Number of update steps
     
+    R = cell(1,nlambda);
+    testAcc = cell(1,nlambda);
+    for k = 1:numUpdates
+        
+        % Get data chunks
+        Xuptr = Xtr(currUpIdx:(currUpIdx+nuptr-1),:);
+        Yuptr = Ytr(currUpIdx:(currUpIdx+nuptr-1),:);
+        Xupval = Xtr(currUpIdx+nuptr:(currUpIdx+nuptr+nupval-1),:);
+        Yupval = Ytr(currUpIdx+nuptr:(currUpIdx+nuptr+nupval-1),:);
+
+        currUpIdx = currUpIdx + nuptr + nupval;
+        
+        if k == 1
+            % Compute cov mat and b
+            XtX = Xuptr'*Xuptr;
+            XtY = Xuptr'*Yuptr;   
+        else
+
+            % Update XtY term
+            XtY = XtY + Xuptr' * Yuptr;
+        end
+        
+        lstar = 0;      % Best lambda
+        bestAcc = 0;    % Highest accuracy    
+
+        for lidx = 1:nlambda
+
+            l = lrng(lidx);
+            
+            if k == 1
+                % Compute first Cholesky factorization of XtX + n * lambda * I
+                R{lidx} = chol(XtX + nuptr * l * eye(d),'upper');  
+            else
+                % Update Cholesky factor
+                R{lidx} = cholupdatek(R{lidx},Xuptr);                
+            end
+            
+           %% Training
+            w = R{lidx} \ (R{lidx}' \ XtY );
+
+           %% Validation
+            % Predict validation labels
+            Yupvalpred_raw = Xupval * w;
+
+            % Encode output
+            Yupvalpred = zeros(nupval,t);
+            for i = 1:nupval
+                [~,maxIdx] = max(Yupvalpred_raw(i,:));
+                Yupvalpred(i,maxIdx) = 1;
+            end
+            clear Yupvalpred_raw;
+
+            % Compute current accuracy
+            C = transpose(bsxfun(@eq, Yupval', Yupvalpred'));
+            D = sum(C,2);
+            E = D == t;
+            numCorrect = sum(E);
+            currAcc = (numCorrect / nupval);     
+
+            if currAcc > bestAcc
+                bestAcc = currAcc;
+                lstar = l;
+            end
+        end
+        
+       %% Retraining
+
+        if retrain == 1
+            for lidx = 1:nlambda
+                % Update Cholesky factor
+                R{lidx} = cholupdatek(R{lidx},Xupval);
+
+            end
+            % Update XtY term
+            XtY = XtY + Xupval' * Yupval;
+        end
+        
+       %% Testing
+       
+        for lidx = 1:nlambda
+
+            l = lrng(lidx);
+
+            % Predict test labels
+            Ytepred_raw = Xte * w;
+
+            % Encode output
+            Ytepred = zeros(nte,t);
+            for i = 1:nte
+                [~,maxIdx] = max(Ytepred_raw(i,:));
+                Ytepred(i,maxIdx) = 1;
+            end
+            clear Yuptestpred_raw;
+
+            % Compute accuracy
+            C = transpose(bsxfun(@eq, Yte', Ytepred'));
+            D = sum(C,2);
+            E = D == t;
+            numCorrect = sum(E);
+            testAcc{lidx} = [testAcc{lidx} , (numCorrect / nte)];
+        end
+    end
 end
 
 %% Batch realistic with loss rebalancing
