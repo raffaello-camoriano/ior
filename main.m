@@ -12,14 +12,21 @@ run_incremental_realistic_rebalanced_label = 1;
 
 % Random dataset
 
-ntr = 10000;     % Number of training samples
+ntr = 1000;     % Number of training samples
 nte = 1000;     % Number of test samples
 n = ntr + nte;  % Total number of examples
 d = 100;        % Dimensionality
 t = 10;         % Number of classes
 
+if mod(n,t) >0
+    error('n cannot be divided by t')
+end
+
 X = rand(n,d);
-tmp = randi(t,n,1);
+% tmp = randi(t,n,1);
+tmp = repmat(1:10,n/t,1);
+tmp = reshape(tmp,n,1);
+tmp = tmp(randperm(n));
 Y = zeros(n,t);
 for i = 1:n
     Y(i,tmp(i)) = 1;
@@ -283,5 +290,32 @@ end
 
 %% Incremental realistic with rebalancing via label reweighting
 if run_incremental_realistic_rebalanced_label == 1
+    
+    %% Format dataset in class-specific cells
+    
+    X_c = cell(1,t);
+    Y_c = cell(1,t);    
+    Xtr_c = cell(1,t);
+    Ytr_c = cell(1,t);    
+    Xte_c = cell(1,t);
+    Yte_c = cell(1,t);
 
+    for sampleidx = 1:n
+        for classidx = 1:t
+            if Y(sampleidx,classidx) == 1
+%                 Y_c{classidx}(sampleidx,:) = Y(sampleidx,:);
+%                 X_c{classidx}(sampleidx,:) = X(sampleidx,:);
+                Y_c{classidx} = [ Y_c{classidx} ; Y(sampleidx,:)];
+                X_c{classidx} = [ X_c{classidx} ; X(sampleidx,:)];
+%                 break
+            end
+        end
+    end
+    
+    for classidx = 1:t
+        Xtr_c{classidx} = X_c{classidx}(1:(ntr/t),:);
+        Ytr_c{classidx} = Y_c{classidx}(1:(ntr/t),:);    
+        Xte_c{classidx} = X_c{classidx}((ntr/t)+1:(ntr+nte)/t,:);
+        Yte_c{classidx} = Y_c{classidx}((ntr/t)+1:(ntr+nte)/t,:);
+    end
 end
