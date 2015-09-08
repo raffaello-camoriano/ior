@@ -336,13 +336,13 @@ if run_incremental_realistic_rebalanced_label == 1
     for cidx = 1:t
         c = classSequence(cidx);
         
-        %Training set
+        % Training set
         Ytr_c1{cidx} = zeros(ntr/t,cidx);
         Ytr_c1{cidx}(:,cidx) = ones(ntr/t,1);
         
-        %Test set
-        Yte_c1{cidx} = zeros(ntr/t,cidx);
-        Yte_c1{cidx}(:,cidx) = ones(ntr/t,1);
+        % Test set
+        Yte_c1{cidx} = zeros(nte/t,cidx);
+        Yte_c1{cidx}(:,cidx) = ones(nte/t,1);
     end
     
     
@@ -360,13 +360,9 @@ if run_incremental_realistic_rebalanced_label == 1
         
         for k = 1:numUpdates
 
-            % Get data chunks
+            % Get training data chunks
             Xuptr = Xtr_c{c}(currUpIdx:(currUpIdx+nuptr-1),:);
             Yuptr = Ytr_c1{c}(currUpIdx:(currUpIdx+nuptr-1),:);
-            Xupval = Xtr_c{c}(currUpIdx+nuptr:(currUpIdx+nuptr+(k*nupval)-1),:);
-            Yupval = Ytr_c1{c}(currUpIdx+nuptr:(currUpIdx+nuptr+(k*nupval)-1),:);
-
-            currUpIdx = currUpIdx + nuptr;
 
             if k == 1 && cidx == 1
                 % Compute cov mat XtX and b (XtY)
@@ -381,11 +377,28 @@ if run_incremental_realistic_rebalanced_label == 1
                 XtY = XtY + Xuptr' * Yuptr;
             end
             
-            % Extend incremental test set to the new class
-            if k == 1 && cidx == 1
+            % Extend incremental validation set          
+            if k == 1 && cidx == 1  % First instance
+                Xupval = Xtr_c{c}(currUpIdx+nuptr:(currUpIdx+nuptr+(k*nupval)-1),:);
+                Yupval = Ytr_c1{c}(currUpIdx+nuptr:(currUpIdx+nuptr+(k*nupval)-1),:);
+            elseif k == 1   % New class extension
+                Xupval = [ Xupval ; Xtr_c{c}(currUpIdx+nuptr:(currUpIdx+nuptr+(k*nupval)-1),:); ];
+                Yupval = [ Yupval , zeros(size(Yupval,1),1) ];   % Add a comumn of zeros
+                Yupval = [ Yupval ; Ytr_c1{c}(currUpIdx+nuptr:(currUpIdx+nuptr+(k*nupval)-1),:) ];  % Add new test samples labels
+            else    % Same class extension
+                % Remove previous validation points of the same class
+                Xupval = Xupval(1:end-((k-1)*nupval),:);
+                Yupval = Yupval(1:end-((k-1)*nupval),:);         
+                % Add new validation points of the same class
+                Xupval = [ Xupval ; Xtr_c{c}(currUpIdx+nuptr:(currUpIdx+nuptr+(k*nupval)-1),:) ];
+                Yupval = [ Yupval ; Ytr_c1{c}(currUpIdx+nuptr:(currUpIdx+nuptr+(k*nupval)-1),:) ];   
+            end
+            
+            % Extend incremental test set
+            if k == 1 && cidx == 1 % First instance
                 Xte_tmp = [ Xte_tmp ; Xte_c{c} ];
                 Yte_tmp = [ Yte_tmp ; Yte_c1{c} ];
-            elseif k == 1
+            elseif k == 1 % New class extension
                 Xte_tmp = [ Xte_tmp ; Xte_c{c} ];
                 Yte_tmp = [ Yte_tmp , zeros(size(Yte_tmp,1),1) ];   % Add a comumn of zeros
                 Yte_tmp = [ Yte_tmp ; Yte_c1{c} ];  % Add new test samples labels
@@ -415,19 +428,19 @@ if run_incremental_realistic_rebalanced_label == 1
                 Yupvalpred_raw = Xupval * w;
 
                 % Encode output
-                Yupvalpred = zeros(k*nupval,cidx);
+                Yupvalpred = zeros((numUpdates*(c-1)+k)*nupval,cidx);
                 for i = 1:nupval
                     [~,maxIdx] = max(Yupvalpred_raw(i,:));
                     Yupvalpred(i,maxIdx) = 1;
                 end
-                clear Yupvalpred_raw;
+%                 clear Yupvalpred_raw;
 
                 % Compute current accuracy
                 C = transpose(bsxfun(@eq, Yupval', Yupvalpred'));
                 D = sum(C,2);
                 E = D == cidx;
                 numCorrect = sum(E);
-                currAcc = (numCorrect / (k*nupval));     
+                currAcc = numCorrect / ((numUpdates*(c-1)+k)*nupval) ;     
 
                 if currAcc > bestAcc
                     bestAcc = currAcc;
@@ -438,6 +451,9 @@ if run_incremental_realistic_rebalanced_label == 1
             lstarqueue = [lstarqueue , lstar];
             bestAccqueue = [bestAccqueue , bestAcc];
 
+            % Update current sample index
+            currUpIdx = currUpIdx + nuptr;
+            
            %% Testing
 
             for lidx = 1:nlambda
@@ -445,22 +461,22 @@ if run_incremental_realistic_rebalanced_label == 1
                 l = lrng(lidx);
 
                 % Predict test labels
-                Ytepred_raw = Xte * w;
+                Ytepred_raw = Xte_tmp * w;
 
                 % Encode output
-                Ytepred = zeros(nte,t);
-                for i = 1:nte
+                Ytepred = zeros(size(Ytepred_raw,1),size(Ytepred_raw,2));
+                for i = 1:size(Ytepred_raw,1)
                     [~,maxIdx] = max(Ytepred_raw(i,:));
                     Ytepred(i,maxIdx) = 1;
                 end
-                clear Yuptestpred_raw;
+                clear Ytepred_raw;
 
                 % Compute accuracy
-                C = transpose(bsxfun(@eq, Yte', Ytepred'));
+                C = transpose(bsxfun(@eq, Yte_tmp', Ytepred'));
                 D = sum(C,2);
                 E = D == cidx;
                 numCorrect = sum(E);
-                testAcc{lidx} = [testAcc{lidx} , (numCorrect / nte)];
+                testAcc{lidx} = [testAcc{lidx} , (numCorrect / size(Ytepred,1))];
             end
         end
     end
