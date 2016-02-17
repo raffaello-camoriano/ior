@@ -1,4 +1,5 @@
 addpath(genpath('/home/kammo/Repos/Enitor/utils'));
+addpath(genpath('/home/kammo/Repos/ior'));
 addpath(genpath('/home/kammo/Repos/objrecpipe_mat'));
 clearAllButBP;
 close all;
@@ -65,12 +66,8 @@ for lidx = 1:numel(lrng)
     end
     clear Yval1pred_raw;
 
-    % Compute current accuracy
-    C = transpose(bsxfun(@eq, Yval1', Yval1pred'));
-    D = sum(C,2);
-    E = D == t;
-    numCorrect = sum(E);
-    currAcc = (numCorrect / nval1);     
+    % Compute current validation reweighted accuracy
+    currAcc = weightedAccuracy( Yval1', Yval1pred' , trainClassFreq);
 
     if currAcc > bestAcc
         bestAcc = currAcc;

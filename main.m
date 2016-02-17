@@ -417,7 +417,7 @@ if run_incremental_realistic_rebalanced_label == 1
                     R{lidx} = chol(XtX + nuptr * l * eye(d),'upper');  
                 else
                     % Update Cholesky factor
-                    R{lidx} = cholupdatek(R{lidx},Xuptr);                
+                    R{lidx} = cholupdatek(R{lidx},Xuptr' , '+');                
                 end
 
                %% Training

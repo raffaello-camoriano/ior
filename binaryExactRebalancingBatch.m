@@ -3,146 +3,182 @@ addpath(genpath('/home/kammo/Repos/objrecpipe_mat'));
 clearAllButBP;
 close all;
 
-numrep = 10;
-testAccBuf = zeros(1,numrep);
-valAccBuf = zeros(1,numrep);
-for k = 1:numrep
-
-%% Load data
-
-% generateData;
-
-classes = 1:2; % classes to be extracted
-
-% Class frequencies for train and test sets
-trainClassFreq = [0.9 0.1];
-testClassFreq = [0.5 0.5];
-
-loadIcub28;
-
-%% Batch RLSC
-% Naive Linear Regularized Least Squares Classifier, 
-% with Tikhonov regularization parameter selection
-
-retrain = 1;
-trainPart = 0.8;
 
 % Parameter selection
-lrng = logspace(1 , -6 , 7);
+numLambdas = 7;
+minLambdaExp = -6;
+maxLambdaExp = 0;
+lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
-% Splitting
-ntr1 = round(ntr*trainPart);
-nval1 = round(ntr*(1-trainPart));
-tr1idx = 1:ntr1;
-val1idx = (1:nval1) + ntr1;
-Xtr1 = Xtr(tr1idx,:);
-Xval1 = Xtr(val1idx,:);
-Ytr1 = Ytr(tr1idx,:);
-Yval1 = Ytr(val1idx,:);
+numrep = 10;
+testAccBuf = zeros(1,numrep);
+bestValAccBuf = zeros(1,numrep);
+valAcc = zeros(numrep,numLambdas);
 
-% Compute rebalancing matrix Gamma
-Gamma = zeros(ntr1);
-for i = 1:ntr1
-    [ ~ , currentClass ] = find(Ytr1(i,:) == 1);
-    Gamma(i,i) = 1-trainClassFreq(currentClass);
-end
+for k = 1:numrep
+    
+    clc
+    display(['Repetition # ', num2str(k), ' of ' , num2str(numrep)]);
+    display(' ');
+	progressBar(k,numrep);
 
-% Precompute cov mat
-XtX = Xtr1'*Gamma*Xtr1;
-XtY = Xtr1'*Gamma*Ytr1;
+    %% Load data
 
-lstar = 0;      % Best lambda
-bestAcc = 0;    % Highest accuracy
-for lidx = 1:numel(lrng)
+    dataRoot =  '/home/kammo/Repos/ior/data/caffe_centralcrop_meanimagenet2012/';
+    trainFolder = 'lunedi22';
+    testFolder = 'martedi23';
 
-    l = lrng(lidx);
+    classes = 1:2; % classes to be extracted
 
-    % Train on TR1
-    w = (XtX + ntr1*l*eye(d)) \ XtY;
+    % Class frequencies for train and test sets
+    trainClassFreq = [0.5 0.5];
+    testClassFreq = [0.5 0.5];
 
-    % Predict validation labels
-    Yval1pred_raw = Xval1 * w;
+    [Xtr, Ytr, Xte, Yte] = loadIcub28([], [], classes, trainClassFreq, testClassFreq, dataRoot, trainFolder, testFolder);
 
-    % Encode output
-    Yval1pred = -ones(nval1,t);
-    for i = 1:nval1
-        [~,maxIdx] = max(Yval1pred_raw(i,:));
-        Yval1pred(i,maxIdx) = 1;
-    end
-    clear Yval1pred_raw;
+    ntr = size(Xtr,1);
+    nte = size(Xte,1);
+    d = size(Xtr,2);
+    t  = size(Ytr,2);
 
-    % Compute current accuracy
-    C = transpose(bsxfun(@eq, Yval1', Yval1pred'));
-    D = sum(C,2);
-    E = D == t;
-    numCorrect = sum(E);
-    currAcc = (numCorrect / nval1);     
+    %% Batch RLSC
+    % Naive Linear Regularized Least Squares Classifier, 
+    % with Tikhonov regularization parameter selection
 
-    if currAcc > bestAcc
-        bestAcc = currAcc;
-        lstar = l;
-    end
-end
+    retrain = 1;
+    trainPart = 0.8;
 
-%% Retrain on full training set with selected model parameters,
-%  if requested
-
-if retrain == 1
+    % Splitting
+    ntr1 = round(ntr*trainPart);
+    nval1 = round(ntr*(1-trainPart));
+    tr1idx = 1:ntr1;
+    val1idx = (1:nval1) + ntr1;
+    Xtr1 = Xtr(tr1idx,:);
+    Xval1 = Xtr(val1idx,:);
+    Ytr1 = Ytr(tr1idx,:);
+    Yval1 = Ytr(val1idx,:);
 
     % Compute rebalancing matrix Gamma
-    Gamma1 = zeros(ntr);
-    for i = 1:ntr
-        [ ~ , currentClass ] = find(Ytr(i,:) == 1);
-        Gamma1(i,i) = 1-trainClassFreq(currentClass);
+    Gamma = zeros(ntr1);
+    for i = 1:ntr1
+        [ ~ , currentClass ] = find(Ytr1(i,:) == 1);
+        Gamma(i,i) = 1-trainClassFreq(currentClass);
     end
 
-    % Compute cov mat
-    XtX = Xtr'*Gamma1*Xtr;
-    XtY = Xtr'*Gamma1*Ytr;    
-    
-    % Train on TR
-    w = (XtX + ntr*lstar*eye(d)) \ XtY;
-end
+    % Precompute cov mat
+    XtX = Xtr1'*Gamma*Xtr1;
+    XtY = Xtr1'*Gamma*Ytr1;
 
-%% Test on test set & compute accuracy
+    lstar = 0;      % Best lambda
+    bestAcc = 0;    % Highest accuracy
+    for lidx = 1:numel(lrng)
 
+        l = lrng(lidx);
 
-% Predict validation labels
-Ytepred_raw = Xte * w;
+        % Train on TR1
+        w = (XtX + ntr1*l*eye(d)) \ XtY;
 
-% Encode output
-if t == 2
-    Ytepred = -ones(nte,1);
-    for i = 1:nte
-        Ytepred(i,maxIdx) = sign(Ytepred_raw(i,:));
-    end    
-else
-    Ytepred = -ones(nte,t);
-    for i = 1:nte
-        [~,maxIdx] = max(Ytepred_raw(i,:));
-        Ytepred(i,maxIdx) = 1;
+        % Predict validation labels
+        Yval1pred_raw = Xval1 * w;
+
+        % Encode output
+        Yval1pred = -ones(nval1,t);
+        for i = 1:nval1
+            [~,maxIdx] = max(Yval1pred_raw(i,:));
+            Yval1pred(i,maxIdx) = 1;
+        end
+        clear Yval1pred_raw;
+
+        % Compute current accuracy
+        C = transpose(bsxfun(@eq, Yval1', Yval1pred'));
+        D = sum(C,2);
+        E = D == t;
+        numCorrect = sum(E);
+        currAcc = (numCorrect / nval1);   
+        valAcc(k,lidx) = currAcc;
+
+        if currAcc > bestAcc
+            bestAcc = currAcc;
+            lstar = l;
+        end
     end
-end
-clear Ytepred_raw;
 
-% Compute test set accuracy
-if t>2
-    C = transpose(bsxfun(@eq, Yte', Ytepred'));
-    D = sum(C,2);
-    E = D == t;
-    numCorrect = sum(E);
-    testAcc = (numCorrect / nte);
-else
-    C = transpose(bsxfun(@eq, Yte', Ytepred'));
-    D = sum(C,2);
-    numCorrect = sum(D);
-    testAcc = (numCorrect / nte);
+    %% Retrain on full training set with selected model parameters,
+    %  if requested
+
+    if retrain == 1
+
+        % Compute rebalancing matrix Gamma
+        Gamma1 = zeros(ntr);
+        for i = 1:ntr
+            [ ~ , currentClass ] = find(Ytr(i,:) == 1);
+            Gamma1(i,i) = 1-trainClassFreq(currentClass);
+        end
+
+        % Compute cov mat
+        XtX = Xtr'*Gamma1*Xtr;
+        XtY = Xtr'*Gamma1*Ytr;    
+
+        % Train on TR
+        w = (XtX + ntr*lstar*eye(d)) \ XtY;
+    end
+
+    %% Test on test set & compute accuracy
+
+
+    % Predict validation labels
+    Ytepred_raw = Xte * w;
+
+    % Encode output
+    if t == 2
+        Ytepred = -ones(nte,1);
+        for i = 1:nte
+            Ytepred(i,maxIdx) = sign(Ytepred_raw(i,:));
+        end    
+    else
+        Ytepred = -ones(nte,t);
+        for i = 1:nte
+            [~,maxIdx] = max(Ytepred_raw(i,:));
+            Ytepred(i,maxIdx) = 1;
+        end
+    end
+    clear Ytepred_raw;
+
+    % Compute test set accuracy
+    if t>2
+        C = transpose(bsxfun(@eq, Yte', Ytepred'));
+        D = sum(C,2);
+        E = D == t;
+        numCorrect = sum(E);
+        testAcc = (numCorrect / nte);
+    else
+        C = transpose(bsxfun(@eq, Yte', Ytepred'));
+        D = sum(C,2);
+        numCorrect = sum(D);
+        testAcc = (numCorrect / nte);
+    end
+
+    testAccBuf(k) = testAcc;
+    bestValAccBuf(k) = bestAcc;
+
 end
 
-testAccBuf(k) = testAcc;
-valAccBuf(k) = bestAcc;
+%% Print results
 
-end
+clc
+display('Results');
+display(' ');
+
+best_val_acc_avg = mean(bestValAccBuf);
+best_val_acc_std = std(bestValAccBuf,1);
+
+display(['Test accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
+
+test_acc_avg = mean(testAccBuf);
+test_acc_std = std(testAccBuf,1);
+
+display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)])
+
 
 %% Plots
 
@@ -155,5 +191,5 @@ hold off
 figure
 hold on
 title(['Best validation accuracy over ' , num2str(numrep) , ' runs']);
-boxplot(valAccBuf')
+boxplot(bestValAccBuf')
 hold off 
