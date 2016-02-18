@@ -1,6 +1,5 @@
 addpath(genpath('/home/kammo/Repos/Enitor/utils'));
 addpath(genpath('/home/kammo/Repos/Enitor/dataset'));
-addpath(genpath('/home/kammo/Repos/objrecpipe_mat'));
 clearAllButBP;
 close all;
 
@@ -31,28 +30,32 @@ trainPart = 0.8;
 
 dataRoot =  '/home/kammo/Repos/ior/data/caffe_centralcrop_meanimagenet2012/';
 trainFolder = 'lunedi22';
-testFolder = 'martedi23';
+% testFolder = 'martedi23';
+testFolder = 'lunedi22';
 
-ntr = 165;
+ntr = [];
 nte = []; 
 
-classes = 1:2; % classes to be extracted
+classes = 1:4:28; % classes to be extracted
+% classes = [1,5]; % classes to be extracted
 
 % Class frequencies for train and test sets
-trainClassFreq = [0.5 0.5];
-testClassFreq = [0.5 0.5];
+% trainClassFreq = [0.05 0.95];
+trainClassFreq = [0.05 0.05 0.05 0.05 0.05 0.05 0.7];
+testClassFreq = [];
 
 % Parameter selection
-numLambdas = 7;
-minLambdaExp = -6;
-maxLambdaExp = 0;
+numLambdas = 50;
+minLambdaExp = -15;
+maxLambdaExp = -5;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
-numrep = 10;
+numrep = 30;
 
 results.bat_rlsc_yesreb.testAccBuf = zeros(1,numrep);
 results.bat_rlsc_yesreb.bestValAccBuf = zeros(1,numrep);
 results.bat_rlsc_yesreb.valAcc = zeros(numrep,numLambdas);
+results.bat_rlsc_yesreb.teAcc = zeros(numrep,numLambdas);
 
 results.bat_rlsc_noreb = results.bat_rlsc_yesreb;
 
@@ -69,13 +72,12 @@ for k = 1:numrep
 
     %% Load data
 
-    if ~exist('ds','class')
-        ds = iCubWorld28(ntr , ntr, 'plusMinusOne' , 1, 1, 1, {classes , {}, {}, {}, {}, {}});
+    if ~exist('ds','var')
+        ds = iCubWorld28(ntr , nte, 'plusMinusOne' , 1, 1, 0, {classes , trainClassFreq, testClassFreq, {}, trainFolder, testFolder});
     else
         % Just reshuffle ds
         ds.shuffleTrainIdx();
         ds.shuffleTestIdx();
-        ds.shuffleAllIdx();
     end
     
     Xtr = ds.X(ds.trainIdx,:);
@@ -109,13 +111,17 @@ for k = 1:numrep
         Gamma = zeros(ntr1);
         if ds.t == 2
             for i = 1:ntr1
-                currentClassIdx = (sign(Ytr1(i,:) - 0.5) / 2) + 1.5;
-                Gamma(i,i) = 1-trainClassFreq(currentClassIdx);
+                    if Ytr1(i,:) > 0
+                        currentClassIdx = 1;
+                    else
+                        currentClassIdx = 2;
+                    end
+                    Gamma(i,i) = 1-trainClassFreq(currentClassIdx);
             end
         else
             for i = 1:ntr1
                 [ ~ , currentClass ] = find(Ytr1(i,:) == 1);
-                Gamma(i,i) = 1-trainClassFreq(currentClass);
+                Gamma(i,i) = 1 - trainClassFreq(classes == currentClass);
             end
         end
 
@@ -135,18 +141,21 @@ for k = 1:numrep
             % Predict validation labels
             Yval1pred_raw = Xval1 * w;
 
-            % Compute current accuracy
+            % Compute current validation accuracy
             currAcc = 1 - ds.performanceMeasure(Yval1 , Yval1pred_raw);
-            
             results.bat_rlsc_yesreb.valAcc(k,lidx) = currAcc;
 
             if currAcc > bestAcc
                 bestAcc = currAcc;
                 lstar = l;
             end
+
+            % Compute current test accuracy
+            Ytepred_raw = Xte * w;
+            results.bat_rlsc_yesreb.teAcc(k,lidx) = 1 - ds.performanceMeasure(Yte , Ytepred_raw);
         end
 
-        %% Retrain on full training set with selected model parameters,
+        % Retrain on full training set with selected model parameters,
         %  if requested
 
         if retrain == 1
@@ -155,13 +164,18 @@ for k = 1:numrep
             Gamma1 = zeros(ntr);
             if ds.t == 2
                 for i = 1:ntr
-                    currentClassIdx = (sign(Ytr(i,:) - 0.5) / 2) + 1.5;
+                    if Ytr(i,:) > 0
+                        currentClassIdx = 1;
+                    else
+                        currentClassIdx = 2;
+                    end
+%                     currentClassIdx = -sign(Ytr(i,:)) / 2 + 1.5;
                     Gamma1(i,i) = 1-trainClassFreq(currentClassIdx);
                 end
             else
                 for i = 1:ntr
                     [ ~ , currentClass ] = find(Ytr(i,:) == 1);
-                    Gamma1(i,i) = 1-trainClassFreq(currentClass);
+                    Gamma1(i,i) = 1-trainClassFreq(classes == currentClass);
                 end
             end
 
@@ -173,7 +187,7 @@ for k = 1:numrep
             w = (XtX + ntr*lstar*eye(d)) \ XtY;
         end
 
-        %% Test on test set & compute accuracy
+        % Test on test set & compute accuracy
 
         % Predict test labels
         Ytepred_raw = Xte * w;
@@ -193,7 +207,7 @@ for k = 1:numrep
     % Naive Linear Regularized Least Squares Classifier, 
     % with Tikhonov regularization parameter selection
 
-    if run_bat_rlsc_yesreb == 1    
+    if run_bat_rlsc_noreb == 1    
 
         % Precompute cov mat
         XtX = Xtr1'*Xtr1;
@@ -220,6 +234,10 @@ for k = 1:numrep
                 bestAcc = currAcc;
                 lstar = l;
             end
+            
+            % Compute current test accuracy
+            Ytepred_raw = Xte * w;
+            results.bat_rlsc_noreb.teAcc(k,lidx) = 1 - ds.performanceMeasure(Yte , Ytepred_raw);
         end
 
         %% Retrain on full training set with selected model parameters,
@@ -237,7 +255,7 @@ for k = 1:numrep
 
         %% Test on test set & compute accuracy
 
-        % Predict validation labels
+        % Predict test labels
         Ytepred_raw = Xte * w;
 
         % Compute current accuracy
@@ -300,32 +318,102 @@ end
 %% Plots
 
 % Batch RLSC, exact rebalancing
-figure
-hold on
-title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
-boxplot(results.bat_rlsc_yesreb.testAccBuf')
-hold off 
+% figure
+% hold on
+% title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
+% boxplot(results.bat_rlsc_yesreb.testAccBuf')
+% hold off 
+% 
+% figure
+% hold on
+% title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
+% boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
+% hold off 
+
+% figure
+% hold on
+% title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
+% contourf(lrng,1:numrep,results.bat_rlsc_yesreb.teAcc, 100, 'LineWidth',0);
+% set(gca,'Xscale','log');
+% xlabel('\lambda')
+% ylabel('Repetition')
+% colorbar
+% hold off
 
 figure
 hold on
-title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
-boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
-hold off 
+title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
+bandplot( lrng , results.bat_rlsc_yesreb.teAcc , 'red' , 0.1 , 1 , 2, '-');
+xlabel('\lambda')
+ylabel('Test accuracy')
+hold off
 
+% figure
+% hold on
+% title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+% contourf(lrng,1:numrep,results.bat_rlsc_yesreb.valAcc, 100, 'LineWidth',0);
+% set(gca,'Xscale','log');
+% xlabel('\lambda')
+% ylabel('Repetition')
+% colorbar
+% hold off
+
+figure
+hold on
+title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+bandplot( lrng , results.bat_rlsc_yesreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
+xlabel('\lambda')
+ylabel('Validation accuracy')
+hold off
 
 % Batch RLSC, no rebalancing
-figure
-hold on
-title({ 'Batch RLSC, no rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
-boxplot(results.bat_rlsc_noreb.testAccBuf')
-hold off 
+% figure
+% hold on
+% title({ 'Batch RLSC, no rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
+% boxplot(results.bat_rlsc_noreb.testAccBuf')
+% hold off 
+% 
+% figure
+% hold on
+% title({ 'Batch RLSC, no rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
+% boxplot(results.bat_rlsc_noreb.bestValAccBuf')
+% hold off 
+
+% figure
+% hold on
+% title({'Batch RLSC, no rebalancing' ; 'Test accuracy vs \lambda'})
+% contourf(lrng,1:numrep,results.bat_rlsc_noreb.teAcc, 100, 'LineWidth',0);
+% set(gca,'Xscale','log');
+% xlabel('\lambda')
+% ylabel('Repetition')
+% colorbar
+% hold off
 
 figure
 hold on
-title({ 'Batch RLSC, no rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
-boxplot(results.bat_rlsc_noreb.bestValAccBuf')
-hold off 
+title({'Batch RLSC, no rebalancing' ; 'Test accuracy vs \lambda'})
+bandplot( lrng , results.bat_rlsc_noreb.teAcc , 'red' , 0.1 , 1 , 2, '-');
+xlabel('\lambda')
+ylabel('Test accuracy')
+hold off
 
+% figure
+% hold on
+% title({'Batch RLSC, no rebalancing' ; 'Validation accuracy vs \lambda'})
+% contourf(lrng,1:numrep,results.bat_rlsc_noreb.valAcc, 100, 'LineWidth',0);
+% set(gca,'Xscale','log');
+% xlabel('\lambda')
+% ylabel('Repetition')
+% colorbar
+% hold off
+
+figure
+hold on
+title({'Batch RLSC, no rebalancing' ; 'Validation accuracy vs \lambda'})
+bandplot( lrng , results.bat_rlsc_noreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
+xlabel('\lambda')
+ylabel('Validation accuracy')
+hold off
 
 %%  Play sound
 
