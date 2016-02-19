@@ -36,21 +36,21 @@ testFolder = 'lunedi22';
 ntr = [];
 nte = []; 
 
-classes = 1:4:28; % classes to be extracted
-% classes = [1,5]; % classes to be extracted
+% classes = 1:4:28; % classes to be extracted
+classes = [1 8]; % classes to be extracted
 
 % Class frequencies for train and test sets
-% trainClassFreq = [0.05 0.95];
-trainClassFreq = [0.05 0.05 0.05 0.05 0.05 0.05 0.7];
+trainClassFreq = [0.1 0.9];
+% trainClassFreq = [0.05 0.05 0.05 0.05 0.05 0.05 0.7];
 testClassFreq = [];
 
 % Parameter selection
-numLambdas = 50;
+numLambdas = 10;
 minLambdaExp = -15;
-maxLambdaExp = -5;
+maxLambdaExp = -3;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
-numrep = 30;
+numrep = 10;
 
 results.bat_rlsc_yesreb.testAccBuf = zeros(1,numrep);
 results.bat_rlsc_yesreb.bestValAccBuf = zeros(1,numrep);
@@ -72,18 +72,24 @@ for k = 1:numrep
 
     %% Load data
 
-    if ~exist('ds','var')
-        ds = iCubWorld28(ntr , nte, 'plusMinusOne' , 1, 1, 0, {classes , trainClassFreq, testClassFreq, {}, trainFolder, testFolder});
-    else
-        % Just reshuffle ds
-        ds.shuffleTrainIdx();
-        ds.shuffleTestIdx();
-    end
-    
-    Xtr = ds.X(ds.trainIdx,:);
-    Ytr = ds.Y(ds.trainIdx,:);
-    Xte = ds.X(ds.testIdx,:);
-    Yte = ds.Y(ds.testIdx,:);
+%     if ~exist('ds','var')
+% %         ds = iCubWorld28(ntr , nte, 'plusMinusOne' , 1, 1, 0, {classes , trainClassFreq, testClassFreq, {}, trainFolder, testFolder});
+        ds = MNIST(ntr , nte, 'plusMinusOne' , 0, 0, 0, {classes , trainClassFreq, testClassFreq});
+%         % reshuffle ds
+%         ds.trainIdx = ds.trainIdx(randperm(numel(ds.trainIdx)));
+%         ds.testIdx = ds.testIdx(randperm(numel(ds.testIdx)));
+%     else
+%         % reshuffle ds
+%         ds.trainIdx = ds.trainIdx(randperm(numel(ds.trainIdx)));
+%         ds.testIdx = ds.testIdx(randperm(numel(ds.testIdx)));
+%     end
+%     
+%     Xtr = ds.X(ds.trainIdx,:);
+%     Ytr = ds.Y(ds.trainIdx,:);
+%     Xte = ds.X(ds.testIdx,:);
+%     Yte = ds.Y(ds.testIdx,:);
+
+    loadmnist;
     
     ntr = size(Xtr,1);
     nte = size(Xte,1);
@@ -109,7 +115,7 @@ for k = 1:numrep
 
         % Compute rebalancing matrix Gamma
         Gamma = zeros(ntr1);
-        if ds.t == 2
+        if t == 2
             for i = 1:ntr1
                     if Ytr1(i,:) > 0
                         currentClassIdx = 1;
@@ -143,6 +149,10 @@ for k = 1:numrep
 
             % Compute current validation accuracy
             currAcc = 1 - ds.performanceMeasure(Yval1 , Yval1pred_raw);
+%             % not weightedd
+%             Yval1pred = ds.scoresToClasses(Yval1pred_raw);
+%             currAcc = weightedAccuracy( Yval1, Yval1pred , trainClassFreq ); % Weighted
+            
             results.bat_rlsc_yesreb.valAcc(k,lidx) = currAcc;
 
             if currAcc > bestAcc
