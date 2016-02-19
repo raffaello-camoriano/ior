@@ -1,5 +1,6 @@
 addpath(genpath('/home/kammo/Repos/Enitor/utils'));
 addpath(genpath('/home/kammo/Repos/Enitor/dataset'));
+addpath(genpath('/home/kammo/Repos/objrecpipe_mat'));
 clearAllButBP;
 close all;
 
@@ -36,21 +37,24 @@ testFolder = 'lunedi22';
 ntr = [];
 nte = []; 
 
-% classes = 1:4:28; % classes to be extracted
-classes = [1 8]; % classes to be extracted
+classes = 1:4:28; % classes to be extracted
+% classes = [1 8]; % classes to be extracted
+% classes = 0:9; % classes to be extracted
 
 % Class frequencies for train and test sets
-trainClassFreq = [0.1 0.9];
-% trainClassFreq = [0.05 0.05 0.05 0.05 0.05 0.05 0.7];
+% trainClassFreq = [0.1 0.9];
+% trainClassFreq = [ 2/19*ones(1,9) , 1/19];
+% trainClassFreq = [ 200*ones(1,9) , 10] / ntr;
+trainClassFreq = [0.05 0.05 0.05 0.05 0.05 0.05 0.7];
 testClassFreq = [];
 
 % Parameter selection
-numLambdas = 30;
-minLambdaExp = -15;
-maxLambdaExp = 10;
+numLambdas = 15;
+minLambdaExp = -12;
+maxLambdaExp = 5;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
-numrep = 20;
+numrep = 5;
 
 results.bat_rlsc_yesreb.testAccBuf = zeros(1,numrep);
 results.bat_rlsc_yesreb.bestValAccBuf = zeros(1,numrep);
@@ -72,25 +76,23 @@ for k = 1:numrep
 
     %% Load data
 
-    if ~exist('ds','var')
-% %         ds = iCubWorld28(ntr , nte, 'plusMinusOne' , 1, 1, 0, {classes , trainClassFreq, testClassFreq, {}, trainFolder, testFolder});
-        ds = MNIST(ntr , nte, 'plusMinusOne' , 0, 0, 0, {classes , trainClassFreq, testClassFreq});
-%         % reshuffle ds
-%         ds.trainIdx = ds.trainIdx(randperm(numel(ds.trainIdx)));
-%         ds.testIdx = ds.testIdx(randperm(numel(ds.testIdx)));
+%     if ~exist('ds','var')
+        ds = iCubWorld28(ntr , nte, 'plusMinusOne' , 1, 1, 0, {classes , trainClassFreq, testClassFreq, {}, trainFolder, testFolder});
+%         ds = MNIST(ntr , nte, 'plusMinusOne' , 0, 0, 0, {classes , trainClassFreq, testClassFreq});
+%         mix up sampled points
+        ds.mixUpTrainIdx;
+        ds.mixUpTestIdx;
 %     else
-%         % reshuffle ds
+%         % mix up sampled points
 %         ds.trainIdx = ds.trainIdx(randperm(numel(ds.trainIdx)));
 %         ds.testIdx = ds.testIdx(randperm(numel(ds.testIdx)));
-    end
+%     end
 %     
-%     Xtr = ds.X(ds.trainIdx,:);
-%     Ytr = ds.Y(ds.trainIdx,:);
-%     Xte = ds.X(ds.testIdx,:);
-%     Yte = ds.Y(ds.testIdx,:);
 
-%     loadmnist;
-    loadmnistmulti;
+    Xtr = ds.X(ds.trainIdx,:);
+    Ytr = ds.Y(ds.trainIdx,:);
+    Xte = ds.X(ds.testIdx,:);
+    Yte = ds.Y(ds.testIdx,:);
     
     ntr = size(Xtr,1);
     nte = size(Xte,1);
@@ -98,6 +100,8 @@ for k = 1:numrep
     t  = size(Ytr,2);
     if t == 1
         t = 2;
+        gammac1 = ds.trainClassNum(1) / ntr;
+        gammac2 = ds.trainClassNum(2) / ntr;
     end
 
     % Splitting
@@ -123,7 +127,10 @@ for k = 1:numrep
             for i = 1:ntr1
                 
                 currClassIdx = find(Ytr1(i,:) == 1);
-                Gamma(i,i) = 1 / gamma(currClassIdx);
+%                 Gamma(i,i) = 1 / gamma(currClassIdx);
+
+
+                Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
             end
         else
             for i = 1:ntr1
@@ -159,8 +166,17 @@ for k = 1:numrep
                 [~,Yval1predvec] = max(Yval1pred,[],2);
 
                 CM = confusionmat(Yval1vec,Yval1predvec);
-                CM = CM ./ repmat(sum(CM,2),1,t);
-                currAcc = trace(CM)/t;
+                seenClasses = union(Yval1vec,Yval1predvec);
+                sd = setdiff(1:numel(classes), seenClasses);
+                if numel(sd) > 0
+                    for i = 1:numel(sd)
+                        CM = [CM(:,1:sd(i)-1) , zeros(size(CM,1),1), CM(:,sd(i):size(CM,2)) ];    % Add 0 column
+                        CM = [CM(1:sd(i)-1,:) ; zeros(1,size(CM,2)); CM(sd(i):size(CM,1),:) ];    % Add 0 row                        
+                    end
+                end
+                CM(seenClasses,seenClasses) = ...
+                CM(seenClasses,seenClasses) ./ repmat(sum(CM(seenClasses,seenClasses),2),1,numel(seenClasses));
+                currAcc = trace(CM)/numel(seenClasses);
             else
 
                 CM = confusionmat(Yval1,sign(Yval1pred_raw));
@@ -183,9 +199,19 @@ for k = 1:numrep
                 [~,Ytevec] = max(Yte,[],2);
                 [~,Ytepredvec] = max(Ytepred,[],2);
 
+
                 CM = confusionmat(Ytevec,Ytepredvec);
-                CM = CM ./ repmat(sum(CM,2),1,t);
-                currAcc = trace(CM)/t;
+                seenClasses = union(Ytevec,Ytepredvec);
+                sd = setdiff(1:numel(classes), seenClasses);
+                if numel(sd) > 0
+                    for i = 1:numel(sd)
+                        CM = [CM(:,1:sd(i)-1) , zeros(size(CM,1),1), CM(:,sd(i):size(CM,2)) ];    % Add 0 column
+                        CM = [CM(1:sd(i)-1,:) ; zeros(1,size(CM,2)); CM(sd(i):size(CM,1),:) ];    % Add 0 row                        
+                    end
+                end
+                CM(seenClasses,seenClasses) = ...
+                CM(seenClasses,seenClasses) ./ repmat(sum(CM(seenClasses,seenClasses),2),1,numel(seenClasses));
+                currAcc = trace(CM)/numel(seenClasses);
             else
                 CM = confusionmat(Yte,sign(Ytepred_raw));
                 CM = CM ./ repmat(sum(CM,2),1,2);
@@ -204,7 +230,8 @@ for k = 1:numrep
             if t > 2
                 for i = 1:ntr
                     currClassIdx = find(Ytr(i,:) == 1);
-                    Gamma1(i,i) = 1 / gamma(currClassIdx);
+%                     Gamma1(i,i) = 1 / gamma(currClassIdx);
+                    Gamma1(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
                 end
             else
                 for i = 1:ntr
@@ -236,9 +263,19 @@ for k = 1:numrep
             [~,Ytevec] = max(Yte,[],2);
             [~,Ytepredvec] = max(Ytepred,[],2);
 
+
             CM = confusionmat(Ytevec,Ytepredvec);
-            CM = CM ./ repmat(sum(CM,2),1,t);
-            currAcc = trace(CM)/t;
+            seenClasses = union(Ytevec,Ytepredvec);
+            sd = setdiff(1:numel(classes), seenClasses);
+            if numel(sd) > 0
+                for i = 1:numel(sd)
+                    CM = [CM(:,1:sd(i)-1) , zeros(size(CM,1),1), CM(:,sd(i):size(CM,2)) ];    % Add 0 column
+                    CM = [CM(1:sd(i)-1,:) ; zeros(1,size(CM,2)); CM(sd(i):size(CM,1),:) ];    % Add 0 row                        
+                end
+            end
+            CM(seenClasses,seenClasses) = ...
+            CM(seenClasses,seenClasses) ./ repmat(sum(CM(seenClasses,seenClasses),2),1,numel(seenClasses));
+            currAcc = trace(CM)/numel(seenClasses);
         else
             CM = confusionmat(Yte,sign(Ytepred_raw));
             CM = CM ./ repmat(sum(CM,2),1,2);
@@ -284,8 +321,17 @@ for k = 1:numrep
                 [~,Yval1predvec] = max(Yval1pred,[],2);
 
                 CM = confusionmat(Yval1vec,Yval1predvec);
-                CM = CM ./ repmat(sum(CM,2),1,t);
-                currAcc = trace(CM)/t;
+                seenClasses = union(Yval1vec,Yval1predvec);
+                sd = setdiff(1:numel(classes), seenClasses);
+                if numel(sd) > 0
+                    for i = 1:numel(sd)
+                        CM = [CM(:,1:sd(i)-1) , zeros(size(CM,1),1), CM(:,sd(i):size(CM,2)) ];    % Add 0 column
+                        CM = [CM(1:sd(i)-1,:) ; zeros(1,size(CM,2)); CM(sd(i):size(CM,1),:) ];    % Add 0 row                        
+                    end
+                end
+                CM(seenClasses,seenClasses) = ...
+                CM(seenClasses,seenClasses) ./ repmat(sum(CM(seenClasses,seenClasses),2),1,numel(seenClasses));
+                currAcc = trace(CM)/numel(seenClasses);
             else
                 CM = confusionmat(Yval1,sign(Yval1pred_raw));
                 CM = CM ./ repmat(sum(CM,2),1,2);
@@ -308,9 +354,19 @@ for k = 1:numrep
                 [~,Ytevec] = max(Yte,[],2);
                 [~,Ytepredvec] = max(Ytepred,[],2);
 
+
                 CM = confusionmat(Ytevec,Ytepredvec);
-                CM = CM ./ repmat(sum(CM,2),1,t);
-                currAcc = trace(CM)/t;
+                seenClasses = union(Ytevec,Ytepredvec);
+                sd = setdiff(1:numel(classes), seenClasses);
+                if numel(sd) > 0
+                    for i = 1:numel(sd)
+                        CM = [CM(:,1:sd(i)-1) , zeros(size(CM,1),1), CM(:,sd(i):size(CM,2)) ];    % Add 0 column
+                        CM = [CM(1:sd(i)-1,:) ; zeros(1,size(CM,2)); CM(sd(i):size(CM,1),:) ];    % Add 0 row                        
+                    end
+                end
+                CM(seenClasses,seenClasses) = ...
+                CM(seenClasses,seenClasses) ./ repmat(sum(CM(seenClasses,seenClasses),2),1,numel(seenClasses));
+                currAcc = trace(CM)/numel(seenClasses);
             else
                 CM = confusionmat(Yte,sign(Ytepred_raw));
                 CM = CM ./ repmat(sum(CM,2),1,2);
@@ -346,9 +402,19 @@ for k = 1:numrep
             [~,Ytevec] = max(Yte,[],2);
             [~,Ytepredvec] = max(Ytepred,[],2);
 
+
             CM = confusionmat(Ytevec,Ytepredvec);
-            CM = CM ./ repmat(sum(CM,2),1,t);
-            currAcc = trace(CM)/t;
+            seenClasses = union(Ytevec,Ytepredvec);
+            sd = setdiff(1:numel(classes), seenClasses);
+            if numel(sd) > 0
+                for i = 1:numel(sd)
+                    CM = [CM(:,1:sd(i)-1) , zeros(size(CM,1),1), CM(:,sd(i):size(CM,2)) ];    % Add 0 column
+                    CM = [CM(1:sd(i)-1,:) ; zeros(1,size(CM,2)); CM(sd(i):size(CM,1),:) ];    % Add 0 row                        
+                end
+            end
+            CM(seenClasses,seenClasses) = ...
+            CM(seenClasses,seenClasses) ./ repmat(sum(CM(seenClasses,seenClasses),2),1,numel(seenClasses));
+            currAcc = trace(CM)/numel(seenClasses);
         else
             CM = confusionmat(Yte,sign(Ytepred_raw));
             CM = CM ./ repmat(sum(CM,2),1,2);

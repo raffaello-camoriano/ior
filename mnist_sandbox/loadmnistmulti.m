@@ -3,8 +3,8 @@ data = load('mnist_all.mat');
 
 %% Training
 
-ntr = 200*ones(1,10);
-ntr(10) = 10;
+ntr = 5000*ones(1,10);
+ntr(10) = 200;
 
 ntrtot = sum(ntr);
 
