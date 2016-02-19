@@ -1,5 +1,5 @@
-addpath(genpath('/home/Raffaello/Repos/Enitor/utils'));
-addpath(genpath('/home/Raffaello/Repos/Enitor/dataset'));
+addpath(genpath('/home/raffaello/Repos/Enitor/utils'));
+addpath(genpath('/home/raffaello/Repos/Enitor/dataset'));
 clearAllButBP;
 close all;
 
