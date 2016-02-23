@@ -1,7 +1,4 @@
-addpath(genpath('/home/kammo/Repos/Enitor/utils'));
-addpath(genpath('/home/kammo/Repos/Enitor/dataset'));
-addpath(genpath('/home/kammo/Repos/objrecpipe_mat'));
-addpath('utils');
+conf;
 clearAllButBP;
 close all;
 
@@ -136,7 +133,10 @@ for k = 1:numrep
         for i = 1:ntr1
 
             currClassIdx = find(Ytr1(i,:) == 1);
-                Gamma(i,i) = 1 / p(currClassIdx);
+            
+            Gamma(i,i) = computeGamma(p,currClassIdx);
+            
+%                 Gamma(i,i) = 1 / p(currClassIdx);
 %                 Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
 %                 Gamma(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
 %             Gamma(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
@@ -197,10 +197,7 @@ for k = 1:numrep
             Gamma1 = zeros(ntr);
             for i = 1:ntr
                 currClassIdx = find(Ytr(i,:) == 1);
-                    Gamma1(i,i) = 1 / p(currClassIdx);
-%                     Gamma1(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
-%                     Gamma1(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-%                 Gamma1(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
+                    Gamma1(i,i) = computeGamma(p,currClassIdx);
             end
                 
             % Compute cov mat
@@ -247,10 +244,7 @@ for k = 1:numrep
         for i = 1:ntr1
 
             currClassIdx = find(Ytr1(i,:) == 1);
-                Gamma(i,i) = 1 / p(currClassIdx);
-%                 Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
-%                 Gamma(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-%             Gamma(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
+            Gamma(i,i) = computeGamma(p,currClassIdx);
         end
         
         % Precompute cov mat
@@ -310,10 +304,7 @@ for k = 1:numrep
             Gamma1 = zeros(ntr);
             for i = 1:ntr
                 currClassIdx = find(Ytr(i,:) == 1);
-                    Gamma1(i,i) = 1 / p(currClassIdx);
-%                     Gamma1(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
-%                     Gamma1(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-%                 Gamma1(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
+                Gamma1(i,i) = computeGamma(p,currClassIdx);
             end
                 
             % Compute cov mat
@@ -454,10 +445,7 @@ for k = 1:numrep
         for i = 1:ntr1
 
             currClassIdx = find(Ytr1(i,:) == 1);
-                Gamma(i,i) = 1 / p(currClassIdx);
-%                 Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
-%                 Gamma(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-%             Gamma(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
+            Gamma(i,i) = computeGamma(p,currClassIdx);
         end
         
         % Precompute cov mat
@@ -517,10 +505,7 @@ for k = 1:numrep
             Gamma1 = zeros(ntr);
             for i = 1:ntr
                 currClassIdx = find(Ytr(i,:) == 1);
-                    Gamma1(i,i) = 1 / p(currClassIdx);
-%                     Gamma1(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
-%                     Gamma1(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-%                 Gamma1(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
+                Gamma1(i,i) = computeGamma(p,currClassIdx);
             end
 
             % Compute cov mat
@@ -567,10 +552,7 @@ for k = 1:numrep
         for i = 1:ntr1
 
             currClassIdx = find(Ytr1(i,:) == 1);
-                Gamma(i,i) = 1 / p(currClassIdx);
-%                 Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
-%                 Gamma(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-%             Gamma(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
+            Gamma(i,i) = computeGamma(p,currClassIdx);
         end
 
         
@@ -631,10 +613,7 @@ for k = 1:numrep
             Gamma1 = zeros(ntr);
             for i = 1:ntr
                 currClassIdx = find(Ytr(i,:) == 1);
-                    Gamma1(i,i) = 1 / p(currClassIdx);
-%                     Gamma1(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
-%                     Gamma1(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-%                 Gamma1(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
+                Gamma1(i,i) = computeGamma(p,currClassIdx);
             end
                 
             % Compute cov mat
@@ -666,7 +645,6 @@ for k = 1:numrep
         results.inc_rlsc_yesreb2.testAccBuf(k) = currAcc;
         results.inc_rlsc_yesreb2.testCM(k,:,:) = CM;
         results.inc_rlsc_yesreb2.bestValAccBuf(k) = bestAcc;
-
     end    
 end
 
