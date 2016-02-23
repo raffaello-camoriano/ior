@@ -24,7 +24,7 @@ copyfile([tmp.path ,'/', ST.name , '.m'],[ resdir ,'/', ST.name , '.m'])
 
 %% Experiments setup
 run_bat_rlsc_noreb = 1;
-run_bat_rlsc_yesreb = 1;
+run_bat_rlsc_yesreb = 0;
 run_bat_rlsc_yesreb2 = 1;
 run_inc_rlsc_yesreb = 1;
 run_inc_rlsc_yesreb2 = 1;
@@ -33,10 +33,12 @@ retrain = 1;
 trainPart = 0.8;
 
 dataRoot =  '/home/kammo/Repos/ior/data/caffe_centralcrop_meanimagenet2012/';
-trainFolder = 'lunedi22';
+trainFolder = {'lunedi22','venerdi26'};
+% trainFolder = 'venerdi26';
 % testFolder = 'martedi23';
-testFolder = 'lunedi22';
+testFolder = {'lunedi22','venerdi26'};
 
+% ntr = [];
 ntr = [];
 nte = []; 
 
@@ -48,22 +50,23 @@ classes = 1:4:28; % classes to be extracted
 
 % Class frequencies for train and test sets
 % trainClassFreq = [0.1 0.9];
-% trainClassFreq = [ 2/19*ones(1,9) , 1/19];
+% trainClassFreq = [ 0.1067*ones(1,9) 0.04];
 % trainClassFreq = [ 200*ones(1,9) , 10] / ntr;
-% trainClassFreq = [0.1658*ones(1,6) 0.005];
-trainClassFreq = [0.1658*ones(1,6) 0.005 ];
+trainClassFreq = [0.1658*ones(1,6) 0.005];
+% trainClassFreq = [0.1658*ones(1,2) 0.005 0.1658*ones(1,4)];
+% trainClassFreq = [0.1633*ones(1,2) 0.02 0.1633*ones(1,4)];
 % trainClassFreq = [0.3250*ones(1,3) 0.025];
 % trainClassFreq = [0.0416*ones(1,24) 0.00125];
 % trainClassFreq = [];
 testClassFreq = [];
 
 % Parameter selection
-numLambdas = 12;
-minLambdaExp = -10;
+numLambdas = 20;
+minLambdaExp = -5;
 maxLambdaExp = 5;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
-numrep = 20;
+numrep = 5;
 
 results.bat_rlsc_yesreb.testAccBuf = zeros(1,numrep);
 results.bat_rlsc_yesreb.testCM = zeros(numrep, numel(classes), numel(classes));
@@ -89,7 +92,7 @@ for k = 1:numrep
 %     if ~exist('ds','var')
 %         ds = iCubWorld28(ntr , nte, 'plusMinusOne' , 1, 1, 0, {classes , trainClassFreq, testClassFreq, {}, trainFolder, testFolder});
         ds = iCubWorld28(ntr , nte, 'zeroOne' , 1, 1, 0, {classes , trainClassFreq, testClassFreq, {}, trainFolder, testFolder});
-%         ds = MNIST(ntr , nte, 'plusMinusOne' , 0, 0, 0, {classes , trainClassFreq, testClassFreq});
+%         ds = MNIST(ntr , nte, 'zeroOne' , 0, 0, 0, {classes , trainClassFreq, testClassFreq});
 %         mix up sampled points
         ds.mixUpTrainIdx;
         ds.mixUpTestIdx;
@@ -109,13 +112,7 @@ for k = 1:numrep
     nte = size(Xte,1);
     d = size(Xtr,2);
     t  = size(Ytr,2);
-    if t == 1
-        t = 2;
-        p_c1 = ds.trainClassNum(1) / ntr;
-        p_c2 = ds.trainClassNum(2) / ntr;
-    else
-        p = ds.trainClassNum / ntr;
-    end
+    p = ds.trainClassNum / ntr;
 
     % Splitting
     ntr1 = round(ntr*trainPart);
@@ -136,36 +133,16 @@ for k = 1:numrep
 
         % Compute rebalancing matrix Gamma
         Gamma = zeros(ntr1);
-        if t > 2
-            for i = 1:ntr1
-                
-                currClassIdx = find(Ytr1(i,:) == 1);
-%                 Gamma(i,i) = 1 / p(currClassIdx);
+        for i = 1:ntr1
 
-
+            currClassIdx = find(Ytr1(i,:) == 1);
+                Gamma(i,i) = 1 / p(currClassIdx);
 %                 Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
 %                 Gamma(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-                Gamma(i,i) = prod( p([1:currClassIdx-1 , currClassIdx+1:t]));
-            end
-        else
-            for i = 1:ntr1
-                if Ytr1(i,:) == 1
-                    Gamma(i,i) = 1 - p_c1;
-                else
-                    Gamma(i,i) = 1 - p_c2;
-                end
-            end
+%             Gamma(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
         end
-        
-        % Precompute cov mat
-%         XtX = Xtr1'*Gamma*Xtr1;
-%         XtY = Xtr1'*Gamma*Ytr1;
         XtX = Xtr1'*sqrt(Gamma)*Xtr1;
         XtY = Xtr1'*sqrt(Gamma)*Ytr1;
-        
-%         G = diag(Gamma)';
-%         XtX = Xtr1'* ( Xtr1 .* G(ones(1,d),:)');
-%         XtY = Xtr1'* ( Ytr1 .* G(ones(1,t),:)');
 
         lstar = 0;      % Best lambda
         bestAcc = 0;    % Highest accuracy
@@ -218,29 +195,17 @@ for k = 1:numrep
 
             % Compute rebalancing matrix Gamma
             Gamma1 = zeros(ntr);
-            if t > 2
-                for i = 1:ntr
-                    currClassIdx = find(Ytr(i,:) == 1);
-%                     Gamma1(i,i) = 1 / p(currClassIdx);
+            for i = 1:ntr
+                currClassIdx = find(Ytr(i,:) == 1);
+                    Gamma1(i,i) = 1 / p(currClassIdx);
 %                     Gamma1(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
 %                     Gamma1(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-                    Gamma1(i,i) = prod( p([1:currClassIdx-1 , currClassIdx+1:t]));
-                end
-            else
-                for i = 1:ntr
-                    if Ytr(i,:) == 1
-                        Gamma1(i,i) = 1 - p_c1;
-                    else
-                        Gamma1(i,i) = 1 - p_c2;
-                    end
-                end
+%                 Gamma1(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
             end
+                
             % Compute cov mat
             XtX = Xtr'*sqrt(Gamma1)*Xtr;
-            XtY = Xtr'*sqrt(Gamma1)*Ytr;    
-%             G1 = diag(Gamma1)';
-%             XtX = Xtr'* ( Xtr .* G1(ones(1,d),:)');
-%             XtY = Xtr'* ( Ytr .* G1(ones(1,t),:)');
+            XtY = Xtr'*sqrt(Gamma1)*Ytr; 
 
             % Train on TR
             w = (XtX + ntr*lstar*eye(d)) \ XtY;
@@ -279,37 +244,19 @@ for k = 1:numrep
 
         % Compute rebalancing matrix Gamma
         Gamma = zeros(ntr1);
-        if t > 2
-            for i = 1:ntr1
-                
-                currClassIdx = find(Ytr1(i,:) == 1);
-%                 Gamma(i,i) = 1 / p(currClassIdx);
+        for i = 1:ntr1
 
-
+            currClassIdx = find(Ytr1(i,:) == 1);
+                Gamma(i,i) = 1 / p(currClassIdx);
 %                 Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
 %                 Gamma(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-                Gamma(i,i) = prod( p([1:currClassIdx-1 , currClassIdx+1:t]));
-            end
-        else
-            for i = 1:ntr1
-                if Ytr1(i,:) == 1
-                    Gamma(i,i) = 1 - p_c1;
-                else
-                    Gamma(i,i) = 1 - p_c2;
-                end
-            end
+%             Gamma(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
         end
         
         % Precompute cov mat
-%         XtX = Xtr1'*Gamma*Xtr1;
-%         XtY = Xtr1'*Gamma*Ytr1;
         XtX = Xtr1'*Gamma*Xtr1;
         XtY = Xtr1'*Gamma*Ytr1;
         
-%         G = diag(Gamma)';
-%         XtX = Xtr1'* ( Xtr1 .* G(ones(1,d),:)');
-%         XtY = Xtr1'* ( Ytr1 .* G(ones(1,t),:)');
-
         lstar = 0;      % Best lambda
         bestAcc = 0;    % Highest accuracy
         for lidx = 1:numel(lrng)
@@ -361,30 +308,18 @@ for k = 1:numrep
 
             % Compute rebalancing matrix Gamma
             Gamma1 = zeros(ntr);
-            if t > 2
-                for i = 1:ntr
-                    currClassIdx = find(Ytr(i,:) == 1);
-%                     Gamma1(i,i) = 1 / p(currClassIdx);
+            for i = 1:ntr
+                currClassIdx = find(Ytr(i,:) == 1);
+                    Gamma1(i,i) = 1 / p(currClassIdx);
 %                     Gamma1(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
 %                     Gamma1(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-                    Gamma1(i,i) = prod( p([1:currClassIdx-1 , currClassIdx+1:t]));
-                end
-            else
-                for i = 1:ntr
-                    if Ytr(i,:) == 1
-                        Gamma1(i,i) = 1 - p_c1;
-                    else
-                        Gamma1(i,i) = 1 - p_c2;
-                    end
-                end
+%                 Gamma1(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
             end
+                
             % Compute cov mat
             XtX = Xtr'*Gamma1*Xtr;
             XtY = Xtr'*Gamma1*Ytr;    
-%             G1 = diag(Gamma1)';
-%             XtX = Xtr'* ( Xtr .* G1(ones(1,d),:)');
-%             XtY = Xtr'* ( Ytr .* G1(ones(1,t),:)');
-
+            
             % Train on TR
             w = (XtX + ntr*lstar*eye(d)) \ XtY;
         end
@@ -516,33 +451,18 @@ for k = 1:numrep
 
         % Compute rebalancing matrix Gamma
         Gamma = zeros(ntr1);
-        if t > 2
-            for i = 1:ntr1
-                
-                currClassIdx = find(Ytr1(i,:) == 1);
-%                 Gamma(i,i) = 1 / p(currClassIdx);
+        for i = 1:ntr1
 
-
+            currClassIdx = find(Ytr1(i,:) == 1);
+                Gamma(i,i) = 1 / p(currClassIdx);
 %                 Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
 %                 Gamma(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-                Gamma(i,i) = prod( p([1:currClassIdx-1 , currClassIdx+1:t]));
-            end
-        else
-            for i = 1:ntr1
-                if Ytr1(i,:) == 1
-                    Gamma(i,i) = 1 - p_c1;
-                else
-                    Gamma(i,i) = 1 - p_c2;
-                end
-            end
+%             Gamma(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
         end
         
         % Precompute cov mat
         XtX = Xtr1'*Xtr1;
         XtY = Xtr1'*sqrt(Gamma)*Ytr1;
-%         G = diag(Gamma)';
-%         XtY = Xtr1'* ( Ytr1 .* G(ones(1,t),:)');
-%         XtY = Xtr1'* ( Ytr1 .* sqrt(G(ones(1,t),:))');
 
         lstar = 0;      % Best lambda
         bestAcc = 0;    % Highest accuracy
@@ -595,30 +515,18 @@ for k = 1:numrep
 
             % Compute rebalancing matrix Gamma
             Gamma1 = zeros(ntr);
-            if t > 2
-                for i = 1:ntr
-                    currClassIdx = find(Ytr(i,:) == 1);
-%                     Gamma1(i,i) = 1 / p(currClassIdx);
+            for i = 1:ntr
+                currClassIdx = find(Ytr(i,:) == 1);
+                    Gamma1(i,i) = 1 / p(currClassIdx);
 %                     Gamma1(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
 %                     Gamma1(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-                    Gamma1(i,i) = prod( p([1:currClassIdx-1 , currClassIdx+1:t]));
-                end
-            else
-                for i = 1:ntr
-                    if Ytr(i,:) == 1
-                        Gamma1(i,i) = 1 - p_c1;
-                    else
-                        Gamma1(i,i) = 1 - p_c2;
-                    end
-                end
+%                 Gamma1(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
             end
+
             % Compute cov mat
             XtX = Xtr'*Xtr;
-            XtY = Xtr'*sqrt(Gamma1)*Ytr;    
-%             G1 = diag(Gamma1)';
-%             XtY = Xtr'* ( Ytr .* G1(ones(1,t),:)');
-%             XtY = Xtr'* ( Ytr .* sqrt(G1(ones(1,t),:))');
-
+            XtY = Xtr'*sqrt(Gamma1)*Ytr;  
+            
             % Train on TR
             w = (XtX + ntr*lstar*eye(d)) \ XtY;
         end
@@ -656,33 +564,19 @@ for k = 1:numrep
 
         % Compute rebalancing matrix Gamma
         Gamma = zeros(ntr1);
-        if t > 2
-            for i = 1:ntr1
-                
-                currClassIdx = find(Ytr1(i,:) == 1);
-%                 Gamma(i,i) = 1 / p(currClassIdx);
+        for i = 1:ntr1
 
-
+            currClassIdx = find(Ytr1(i,:) == 1);
+                Gamma(i,i) = 1 / p(currClassIdx);
 %                 Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
 %                 Gamma(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-                Gamma(i,i) = prod( p([1:currClassIdx-1 , currClassIdx+1:t]));
-            end
-        else
-            for i = 1:ntr1
-                if Ytr1(i,:) == 1
-                    Gamma(i,i) = 1 - p_c1;
-                else
-                    Gamma(i,i) = 1 - p_c2;
-                end
-            end
+%             Gamma(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
         end
+
         
         % Precompute cov mat
         XtX = Xtr1'*Xtr1;
         XtY = Xtr1'*Gamma*Ytr1;
-%         G = diag(Gamma)';
-%         XtY = Xtr1'* ( Ytr1 .* G(ones(1,t),:)');
-%         XtY = Xtr1'* ( Ytr1 .* sqrt(G(ones(1,t),:))');
 
         lstar = 0;      % Best lambda
         bestAcc = 0;    % Highest accuracy
@@ -735,29 +629,17 @@ for k = 1:numrep
 
             % Compute rebalancing matrix Gamma
             Gamma1 = zeros(ntr);
-            if t > 2
-                for i = 1:ntr
-                    currClassIdx = find(Ytr(i,:) == 1);
-%                     Gamma1(i,i) = 1 / p(currClassIdx);
+            for i = 1:ntr
+                currClassIdx = find(Ytr(i,:) == 1);
+                    Gamma1(i,i) = 1 / p(currClassIdx);
 %                     Gamma1(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
 %                     Gamma1(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-                    Gamma1(i,i) = prod( p([1:currClassIdx-1 , currClassIdx+1:t]));
-                end
-            else
-                for i = 1:ntr
-                    if Ytr(i,:) == 1
-                        Gamma1(i,i) = 1 - p_c1;
-                    else
-                        Gamma1(i,i) = 1 - p_c2;
-                    end
-                end
+%                 Gamma1(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
             end
+                
             % Compute cov mat
             XtX = Xtr'*Xtr;
             XtY = Xtr'*Gamma1*Ytr;    
-%             G1 = diag(Gamma1)';
-%             XtY = Xtr'* ( Ytr .* G1(ones(1,t),:)');
-%             XtY = Xtr'* ( Ytr .* sqrt(G1(ones(1,t),:))');
 
             % Train on TR
             w = (XtX + ntr*lstar*eye(d)) \ XtY;
@@ -786,9 +668,6 @@ for k = 1:numrep
         results.inc_rlsc_yesreb2.bestValAccBuf(k) = bestAcc;
 
     end    
-    
-    
-    
 end
 
 %% Print results
