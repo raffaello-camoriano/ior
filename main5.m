@@ -30,10 +30,10 @@ retrain = 1;
 trainPart = 0.8;
 
 dataRoot =  '/home/kammo/Repos/ior/data/caffe_centralcrop_meanimagenet2012/';
-trainFolder = {'lunedi22','venerdi26'};
+trainFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 % trainFolder = 'venerdi26';
 % testFolder = 'martedi23';
-testFolder = {'lunedi22','venerdi26'};
+testFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 
 % ntr = [];
 ntr = [];
@@ -112,14 +112,18 @@ for k = 1:numrep
     p = ds.trainClassNum / ntr;
 
     % Splitting
-    ntr1 = round(ntr*trainPart);
+%     ntr1 = round(ntr*trainPart);
+    ntr1 = ntr;
     nval1 = round(ntr*(1-trainPart));
-    tr1idx = 1:ntr1;
-    val1idx = (1:nval1) + ntr1;
+    tr1idx = 1:ntr;
+    validx = (1:nval1);
+    teidx = (1:nval1);
     Xtr1 = Xtr(tr1idx,:);
-    Xval1 = Xtr(val1idx,:);
     Ytr1 = Ytr(tr1idx,:);
-    Yval1 = Ytr(val1idx,:);
+    Xval1 = Xte(validx,:);
+    Yval1 = Yte(validx,:);
+    Xte = Xte(nval1+1:end,:);
+    Yte = Yte(nval1+1:end,:);
     
     
     %% Batch RLSC, exact rebalancing (sqrt(Gamma))
