@@ -36,12 +36,12 @@ trainFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 testFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 
 % ntr = [];
-ntr = [];
+ntr = 10000;
 nte = []; 
 
-% classes = 1:28; % classes to be extracted
+classes = 1:28; % classes to be extracted
 % classes = 1:4; % classes to be extracted
-classes = 1:4:28; % classes to be extracted
+% classes = 1:4:28; % classes to be extracted
 % classes = [1 8]; % classes to be extracted
 % classes = 0:9; % classes to be extracted
 
@@ -49,18 +49,18 @@ classes = 1:4:28; % classes to be extracted
 % trainClassFreq = [0.1 0.9];
 % trainClassFreq = [ 0.1067*ones(1,9) 0.04];
 % trainClassFreq = [ 200*ones(1,9) , 10] / ntr;
-trainClassFreq = [0.1658*ones(1,6) 0.005];
+% trainClassFreq = [0.1658*ones(1,6) 0.005];
 % trainClassFreq = [0.1658*ones(1,2) 0.005 0.1658*ones(1,4)];
 % trainClassFreq = [0.1633*ones(1,2) 0.02 0.1633*ones(1,4)];
 % trainClassFreq = [0.3250*ones(1,3) 0.025];
-% trainClassFreq = [0.0416*ones(1,24) 0.00125];
+trainClassFreq = [0.0369*ones(1,27) 0.0025];
 % trainClassFreq = [];
 testClassFreq = [];
 
 % Parameter selection
 numLambdas = 20;
 minLambdaExp = -5;
-maxLambdaExp = 5;
+maxLambdaExp = 10;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
 numrep = 5;
@@ -105,6 +105,10 @@ for k = 1:numrep
     Xte = ds.X(ds.testIdx,:);
     Yte = ds.Y(ds.testIdx,:);
     
+    % Subsample features
+%     Xtr = Xtr(:,1:4:end);
+%     Xte = Xte(:,1:4:end);
+    
     ntr = size(Xtr,1);
     nte = size(Xte,1);
     d = size(Xtr,2);
@@ -137,13 +141,7 @@ for k = 1:numrep
         for i = 1:ntr1
 
             currClassIdx = find(Ytr1(i,:) == 1);
-            
             Gamma(i,i) = computeGamma(p,currClassIdx);
-            
-%                 Gamma(i,i) = 1 / p(currClassIdx);
-%                 Gamma(i,i) = prod(t  * ds.trainClassFreq([1:currClassIdx-1 , currClassIdx+1:t]));
-%                 Gamma(i,i) = prod(t  * p([1:currClassIdx-1 , currClassIdx+1:t]));
-%             Gamma(i,i) = prod( t * p([1:currClassIdx-1 , currClassIdx+1:t]));
         end
         XtX = Xtr1'*sqrt(Gamma)*Xtr1;
         XtY = Xtr1'*sqrt(Gamma)*Ytr1;
@@ -201,7 +199,7 @@ for k = 1:numrep
             Gamma1 = zeros(ntr);
             for i = 1:ntr
                 currClassIdx = find(Ytr(i,:) == 1);
-                    Gamma1(i,i) = computeGamma(p,currClassIdx);
+                Gamma1(i,i) = computeGamma(p,currClassIdx);
             end
                 
             % Compute cov mat
@@ -246,7 +244,6 @@ for k = 1:numrep
         % Compute rebalancing matrix Gamma
         Gamma = zeros(ntr1);
         for i = 1:ntr1
-
             currClassIdx = find(Ytr1(i,:) == 1);
             Gamma(i,i) = computeGamma(p,currClassIdx);
         end
