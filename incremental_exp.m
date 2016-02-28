@@ -20,7 +20,7 @@ tmp = what;
 copyfile([tmp.path ,'/', ST.name , '.m'],[ resdir ,'/', ST.name , '.m'])
 
 %% Experiments setup
-run_bat_rlsc_yesreb = 1;    % Batch with exact rebalancing
+run_bat_rlsc_yesreb = 0;    % Batch with exact rebalancing
 run_inc_rlsc_norec = 1;     % Naive incremental with no recoding
 run_inc_rlsc_yesrec = 1;    % Incremental with recoding
 
@@ -61,11 +61,9 @@ lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
 
 % Recoding parameter
-alpha = 1;
+alpha = 1/2;
 
-
-
-numrep = 5;
+numrep = 1;
 
 results.bat_rlsc_yesreb.testCM = zeros(numrep,numel(classes),1, numel(classes), numel(classes));
 results.bat_rlsc_yesreb.bestValAccBuf = zeros(numrep,numel(classes),1);
@@ -113,7 +111,7 @@ for k = 1:numrep
     nte = size(Xte,1);
     d = size(Xtr,2);
     t  = size(Ytr,2);
-    p = ds.trainClassNum / ntr;
+%     p = ds.trainClassNum / ntr;
 
     % Splitting
 %     ntr1 = round(ntr*trainPart);
@@ -180,6 +178,12 @@ for k = 1:numrep
                 Xtr_tmp = [Xtr_tmp ; Xtr_imbal(q,:)];
                 Ytr_tmp = [Ytr_tmp ; Ytr_imbal(q,:)];
                 ntr_tmp = size(Xtr_tmp,1);
+                
+                % Compute p
+                [~,tmp] = find(Ytr_tmp == 1);
+                a = unique(tmp);
+                out = [a,histc(tmp(:),a)];
+                p = out(:,2)'/ntr_tmp;
                 
                 % Compute rebalancing matrix Gamma
                 Gamma = zeros(ntr_tmp);
@@ -294,7 +298,7 @@ for k = 1:numrep
                         currAcc = trace(CM)/2;                
                     end
 
-                    results.bat_rlsc_noreb.valAcc(k,j,q,lidx) = currAcc;
+                    results.inc_rlsc_norec.valAcc(k,j,q,lidx) = currAcc;
 
                     if currAcc > bestAcc
                         bestAcc = currAcc;
@@ -306,24 +310,22 @@ for k = 1:numrep
 
                     if t > 2
                         Ytepred = ds.scoresToClasses(Ytepred_raw);
-                        [currAcc , ~] = weightedAccuracy2( Yte, Ytepred , classes);
+                        [currAcc , CM] = weightedAccuracy2( Yte, Ytepred , classes);
                     else
                         CM = confusionmat(Yte,sign(Ytepred_raw));
                         CM = CM ./ repmat(sum(CM,2),1,2);
                         currAcc = trace(CM)/2;                
                     end
 
-                    results.bat_rlsc_noreb.teAcc(k,j,q,lidx) = currAcc;
+                    results.inc_rlsc_norec.teAcc(k,j,q,lidx) = currAcc;
                 end
 
-                results.bat_rlsc_noreb.ntr = ntr;
-                results.bat_rlsc_noreb.nte = nte;
-                results.bat_rlsc_noreb.testCM(k,j,q,:,:) = CM;
-                results.bat_rlsc_noreb.bestValAccBuf(k,j,q) = bestAcc;
+                results.inc_rlsc_norec.ntr = ntr;
+                results.inc_rlsc_norec.nte = nte;
+                results.inc_rlsc_norec.testCM(k,j,q,:,:) = CM;
+                results.inc_rlsc_norec.bestValAccBuf(k,j,q) = bestAcc;
             end
         end
-
-
 
 
         %% Incremental RLSC, recoding
@@ -331,7 +333,9 @@ for k = 1:numrep
         % with Tikhonov regularization parameter selection
 
         if run_inc_rlsc_yesrec == 1    
-
+            
+            Xtr_tmp = Xtr_bal;
+            Ytr_tmp = Ytr_bal;
             R_tmp = cell(1,numLambdas);
             for q = 1:ntr_imbal
 
@@ -339,12 +343,18 @@ for k = 1:numrep
                 Ytr_tmp = [Ytr_tmp ; Ytr_imbal(q,:)];
                 ntr_tmp = size(Xtr_tmp,1);
                 
+                % Compute p
+                [~,tmp] = find(Ytr_tmp == 1);
+                a = unique(tmp);
+                out = [a,histc(tmp(:),a)];
+                p = out(:,2)'/ntr_tmp;
+                
                 % Compute rebalancing matrix Gamma
                 Gamma = zeros(ntr_tmp);
                 for i = 1:ntr_tmp
 
                     currClassIdx = find(Ytr_tmp(i,:) == 1);
-                    Gamma(i,i) = computeGamma(p,currClassIdx);
+                    Gamma(i,i) = computeGamma(p,currClassIdx)^alpha;
                 end
                 
                 % Compute b
@@ -380,7 +390,7 @@ for k = 1:numrep
                         currAcc = trace(CM)/2;                
                     end
 
-                    results.bat_rlsc_noreb.valAcc(k,j,q,lidx) = currAcc;
+                    results.inc_rlsc_yesrec.valAcc(k,j,q,lidx) = currAcc;
 
                     if currAcc > bestAcc
                         bestAcc = currAcc;
@@ -399,378 +409,388 @@ for k = 1:numrep
                         currAcc = trace(CM)/2;                
                     end
 
-                    results.bat_rlsc_noreb.teAcc(k,j,q,lidx) = currAcc;
+                    results.inc_rlsc_yesrec.teAcc(k,j,q,lidx) = currAcc;
                 end
 
-                results.inc_rlsc_yesreb.ntr = ntr;
-                results.inc_rlsc_yesreb.nte = nte;
-                results.inc_rlsc_yesreb.testCM(k,j,q,:,:) = CM;
-                results.inc_rlsc_yesreb.bestValAccBuf(k,j,q) = bestAcc;
+                results.inc_rlsc_yesrec.ntr = ntr;
+                results.inc_rlsc_yesrec.nte = nte;
+                results.inc_rlsc_yesrec.testCM(k,j,q,:,:) = CM;
+                results.inc_rlsc_yesrec.bestValAccBuf(k,j,q) = bestAcc;
             end
         end
+        
+        % Save workspace
+
+        if saveResult == 1
+
+            save([resdir '/workspace.mat']);
+        end
+        
     end
 end
 
 %% Print results
 
-clc
-display('Results');
-display(' ');
+% clc
+% display('Results');
+% display(' ');
+% 
+% if run_bat_rlsc_yesreb == 1    
+% 
+%     display('Batch RLSC, exact rebalancing (sqrt(Gamma))');
+%     best_val_acc_avg = mean(results.bat_rlsc_yesreb.bestValAccBuf);
+%     best_val_acc_std = std(results.bat_rlsc_yesreb.bestValAccBuf,1);
+% 
+%     display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
+% 
+%     test_acc_avg = mean(results.bat_rlsc_yesreb.testAccBuf);
+%     test_acc_std = std(results.bat_rlsc_yesreb.testAccBuf,1);
+% 
+%     display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)])
+%     display(' ');
+% end
+% 
+% if run_bat_rlsc_yesreb2 == 1
+%     display('Batch RLSC, exact rebalancing (Gamma)');
+%     best_val_acc_avg = mean(results.bat_rlsc_yesreb2.bestValAccBuf);
+%     best_val_acc_std = std(results.bat_rlsc_yesreb2.bestValAccBuf,1);
+% 
+%     display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
+% 
+%     test_acc_avg = mean(results.bat_rlsc_yesreb2.testAccBuf);
+%     test_acc_std = std(results.bat_rlsc_yesreb2.testAccBuf,1);
+% 
+%     display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)])
+%     display(' ');    
+% end
+% 
+% if run_bat_rlsc_noreb == 1    
+% 
+%     display('Batch RLSC, no rebalancing');
+%     best_val_acc_avg = mean(results.bat_rlsc_noreb.bestValAccBuf);
+%     best_val_acc_std = std(results.bat_rlsc_noreb.bestValAccBuf,1);
+% 
+%     display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
+% 
+%     test_acc_avg = mean(results.bat_rlsc_noreb.testAccBuf);
+%     test_acc_std = std(results.bat_rlsc_noreb.testAccBuf,1);
+% 
+%     display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)]);
+%     display(' ');
+% end
+% 
+% if run_inc_rlsc_yesreb == 1    
+% 
+%     display('Incremental RLSC, with recoding (sqrt(Gamma))');
+%     best_val_acc_avg = mean(results.inc_rlsc_yesreb.bestValAccBuf);
+%     best_val_acc_std = std(results.inc_rlsc_yesreb.bestValAccBuf,1);
+% 
+%     display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
+% 
+%     test_acc_avg = mean(results.inc_rlsc_yesreb.testAccBuf);
+%     test_acc_std = std(results.inc_rlsc_yesreb.testAccBuf,1);
+% 
+%     display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)]);
+%     display(' ');
+% end
+% 
+% 
+% if run_inc_rlsc_yesreb2 == 1    
+% 
+%     display('Incremental RLSC, with recoding (Gamma)');
+%     best_val_acc_avg = mean(results.inc_rlsc_yesreb2.bestValAccBuf);
+%     best_val_acc_std = std(results.inc_rlsc_yesreb2.bestValAccBuf,1);
+% 
+%     display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
+% 
+%     test_acc_avg = mean(results.inc_rlsc_yesreb2.testAccBuf);
+%     test_acc_std = std(results.inc_rlsc_yesreb2.testAccBuf,1);
+% 
+%     display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)]);
+%     display(' ');
+% end
 
-if run_bat_rlsc_yesreb == 1    
 
-    display('Batch RLSC, exact rebalancing (sqrt(Gamma))');
-    best_val_acc_avg = mean(results.bat_rlsc_yesreb.bestValAccBuf);
-    best_val_acc_std = std(results.bat_rlsc_yesreb.bestValAccBuf,1);
-
-    display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
-
-    test_acc_avg = mean(results.bat_rlsc_yesreb.testAccBuf);
-    test_acc_std = std(results.bat_rlsc_yesreb.testAccBuf,1);
-
-    display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)])
-    display(' ');
-end
-
-if run_bat_rlsc_yesreb2 == 1
-    display('Batch RLSC, exact rebalancing (Gamma)');
-    best_val_acc_avg = mean(results.bat_rlsc_yesreb2.bestValAccBuf);
-    best_val_acc_std = std(results.bat_rlsc_yesreb2.bestValAccBuf,1);
-
-    display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
-
-    test_acc_avg = mean(results.bat_rlsc_yesreb2.testAccBuf);
-    test_acc_std = std(results.bat_rlsc_yesreb2.testAccBuf,1);
-
-    display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)])
-    display(' ');    
-end
-
-if run_bat_rlsc_noreb == 1    
-
-    display('Batch RLSC, no rebalancing');
-    best_val_acc_avg = mean(results.bat_rlsc_noreb.bestValAccBuf);
-    best_val_acc_std = std(results.bat_rlsc_noreb.bestValAccBuf,1);
-
-    display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
-
-    test_acc_avg = mean(results.bat_rlsc_noreb.testAccBuf);
-    test_acc_std = std(results.bat_rlsc_noreb.testAccBuf,1);
-
-    display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)]);
-    display(' ');
-end
-
-if run_inc_rlsc_yesreb == 1    
-
-    display('Incremental RLSC, with recoding (sqrt(Gamma))');
-    best_val_acc_avg = mean(results.inc_rlsc_yesreb.bestValAccBuf);
-    best_val_acc_std = std(results.inc_rlsc_yesreb.bestValAccBuf,1);
-
-    display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
-
-    test_acc_avg = mean(results.inc_rlsc_yesreb.testAccBuf);
-    test_acc_std = std(results.inc_rlsc_yesreb.testAccBuf,1);
-
-    display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)]);
-    display(' ');
-end
-
-
-if run_inc_rlsc_yesreb2 == 1    
-
-    display('Incremental RLSC, with recoding (Gamma)');
-    best_val_acc_avg = mean(results.inc_rlsc_yesreb2.bestValAccBuf);
-    best_val_acc_std = std(results.inc_rlsc_yesreb2.bestValAccBuf,1);
-
-    display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
-
-    test_acc_avg = mean(results.inc_rlsc_yesreb2.testAccBuf);
-    test_acc_std = std(results.inc_rlsc_yesreb2.testAccBuf,1);
-
-    display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)]);
-    display(' ');
-end
-
-
-%% Save workspace
-
-if saveResult == 1
-
-    save([resdir '/workspace.mat']);
-end
 
 %% Plots
 
-
-if run_bat_rlsc_yesreb == 1    
-
-    % Batch RLSC, exact rebalancing
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_yesreb.testAccBuf')
-    % hold off 
-    % 
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
-    % hold off 
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.teAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
+for c = 1:numel(classes)
     figure
     hold on
-    title({'Batch RLSC, exact rebalancing  (sqrt(Gamma))' ; 'Test accuracy vs \lambda'})
-    bandplot( lrng , results.bat_rlsc_yesreb.teAcc , 'red' , 0.1 , 1 , 2, '-');
-    xlabel('\lambda')
-    ylabel('Test accuracy')
+    plot(squeeze(mean(results.inc_rlsc_norec.bestValAccBuf(:,c,1:out(c,2)),1)))
+    plot(squeeze(mean(results.inc_rlsc_yesrec.bestValAccBuf(:,c,1:out(c,2)),1)))
+    title(['Test Error for imbalanced class # ' , num2str(c)]);
     hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.valAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
-    % bandplot( lrng , results.bat_rlsc_yesreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
-    % xlabel('\lambda')
-    % ylabel('Validation accuracy')
-    % hold off
-
 end
-
-if run_bat_rlsc_yesreb2 == 1    
-
-    % Batch RLSC, exact rebalancing
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_yesreb.testAccBuf')
-    % hold off 
-    % 
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
-    % hold off 
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.teAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
-    figure
-    hold on
-    title({'Batch RLSC, exact rebalancing (Gamma)' ; 'Test accuracy vs \lambda'})
-    bandplot( lrng , results.bat_rlsc_yesreb2.teAcc , 'red' , 0.1 , 1 , 2, '-');
-    xlabel('\lambda')
-    ylabel('Test accuracy')
-    hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.valAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
-    % bandplot( lrng , results.bat_rlsc_yesreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
-    % xlabel('\lambda')
-    % ylabel('Validation accuracy')
-    % hold off
-
-end
-
-if run_bat_rlsc_noreb == 1    
-
-    % Batch RLSC, no rebalancing
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, no rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_noreb.testAccBuf')
-    % hold off 
-    % 
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, no rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_noreb.bestValAccBuf')
-    % hold off 
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, no rebalancing' ; 'Test accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_noreb.teAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
-    figure
-    hold on
-    title({'Batch RLSC, no rebalancing' ; 'Test accuracy vs \lambda'})
-    bandplot( lrng , results.bat_rlsc_noreb.teAcc , 'red' , 0.1 , 1 , 2, '-');
-    xlabel('\lambda')
-    ylabel('Test accuracy')
-    hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, no rebalancing' ; 'Validation accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_noreb.valAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, no rebalancing' ; 'Validation accuracy vs \lambda'})
-    % bandplot( lrng , results.bat_rlsc_noreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
-    % xlabel('\lambda')
-    % ylabel('Validation accuracy')
-    % hold off
-end
-
-
-
-if run_inc_rlsc_yesreb == 1    
-
-    % Batch RLSC, exact rebalancing
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_yesreb.testAccBuf')
-    % hold off 
-    % 
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
-    % hold off 
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.teAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
-    figure
-    hold on
-    title({'Incremental RLSC with recoding (sqrt(Gamma))' ; 'Test accuracy vs \lambda'})
-    bandplot( lrng , results.inc_rlsc_yesreb.teAcc , 'red' , 0.1 , 1 , 2, '-');
-    xlabel('\lambda')
-    ylabel('Test accuracy')
-    hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.valAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
-    % bandplot( lrng , results.bat_rlsc_yesreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
-    % xlabel('\lambda')
-    % ylabel('Validation accuracy')
-    % hold off
-
-end
-
-
-
-
-if run_inc_rlsc_yesreb2 == 1    
-
-    % Batch RLSC, exact rebalancing
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_yesreb.testAccBuf')
-    % hold off 
-    % 
-    % figure
-    % hold on
-    % title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
-    % boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
-    % hold off 
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.teAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
-    figure
-    hold on
-    title({'Incremental RLSC with recoding (Gamma)' ; 'Test accuracy vs \lambda'})
-    bandplot( lrng , results.inc_rlsc_yesreb2.teAcc , 'red' , 0.1 , 1 , 2, '-');
-    xlabel('\lambda')
-    ylabel('Test accuracy')
-    hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
-    % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.valAcc, 100, 'LineWidth',0);
-    % set(gca,'Xscale','log');
-    % xlabel('\lambda')
-    % ylabel('Repetition')
-    % colorbar
-    % hold off
-
-    % figure
-    % hold on
-    % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
-    % bandplot( lrng , results.bat_rlsc_yesreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
-    % xlabel('\lambda')
-    % ylabel('Validation accuracy')
-    % hold off
-
-end
+% 
+% if run_bat_rlsc_yesreb == 1    
+% 
+%     % Batch RLSC, exact rebalancing
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_yesreb.testAccBuf')
+%     % hold off 
+%     % 
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
+%     % hold off 
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.teAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     figure
+%     hold on
+%     title({'Batch RLSC, exact rebalancing  (sqrt(Gamma))' ; 'Test accuracy vs \lambda'})
+%     bandplot( lrng , results.bat_rlsc_yesreb.teAcc , 'red' , 0.1 , 1 , 2, '-');
+%     xlabel('\lambda')
+%     ylabel('Test accuracy')
+%     hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.valAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % bandplot( lrng , results.bat_rlsc_yesreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
+%     % xlabel('\lambda')
+%     % ylabel('Validation accuracy')
+%     % hold off
+% 
+% end
+% 
+% if run_bat_rlsc_yesreb2 == 1    
+% 
+%     % Batch RLSC, exact rebalancing
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_yesreb.testAccBuf')
+%     % hold off 
+%     % 
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
+%     % hold off 
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.teAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     figure
+%     hold on
+%     title({'Batch RLSC, exact rebalancing (Gamma)' ; 'Test accuracy vs \lambda'})
+%     bandplot( lrng , results.bat_rlsc_yesreb2.teAcc , 'red' , 0.1 , 1 , 2, '-');
+%     xlabel('\lambda')
+%     ylabel('Test accuracy')
+%     hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.valAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % bandplot( lrng , results.bat_rlsc_yesreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
+%     % xlabel('\lambda')
+%     % ylabel('Validation accuracy')
+%     % hold off
+% 
+% end
+% 
+% if run_bat_rlsc_noreb == 1    
+% 
+%     % Batch RLSC, no rebalancing
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, no rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_noreb.testAccBuf')
+%     % hold off 
+%     % 
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, no rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_noreb.bestValAccBuf')
+%     % hold off 
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, no rebalancing' ; 'Test accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_noreb.teAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     figure
+%     hold on
+%     title({'Batch RLSC, no rebalancing' ; 'Test accuracy vs \lambda'})
+%     bandplot( lrng , results.bat_rlsc_noreb.teAcc , 'red' , 0.1 , 1 , 2, '-');
+%     xlabel('\lambda')
+%     ylabel('Test accuracy')
+%     hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, no rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_noreb.valAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, no rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % bandplot( lrng , results.bat_rlsc_noreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
+%     % xlabel('\lambda')
+%     % ylabel('Validation accuracy')
+%     % hold off
+% end
+% 
+% 
+% 
+% if run_inc_rlsc_yesreb == 1    
+% 
+%     % Batch RLSC, exact rebalancing
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_yesreb.testAccBuf')
+%     % hold off 
+%     % 
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
+%     % hold off 
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.teAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     figure
+%     hold on
+%     title({'Incremental RLSC with recoding (sqrt(Gamma))' ; 'Test accuracy vs \lambda'})
+%     bandplot( lrng , results.inc_rlsc_yesreb.teAcc , 'red' , 0.1 , 1 , 2, '-');
+%     xlabel('\lambda')
+%     ylabel('Test accuracy')
+%     hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.valAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % bandplot( lrng , results.bat_rlsc_yesreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
+%     % xlabel('\lambda')
+%     % ylabel('Validation accuracy')
+%     % hold off
+% 
+% end
+% 
+% 
+% 
+% 
+% if run_inc_rlsc_yesreb2 == 1    
+% 
+%     % Batch RLSC, exact rebalancing
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, exact rebalancing' ; ['Test accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_yesreb.testAccBuf')
+%     % hold off 
+%     % 
+%     % figure
+%     % hold on
+%     % title({ 'Batch RLSC, exact rebalancing' ; ['Validation accuracy over ' , num2str(numrep) , ' runs'] } );
+%     % boxplot(results.bat_rlsc_yesreb.bestValAccBuf')
+%     % hold off 
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Test accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.teAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     figure
+%     hold on
+%     title({'Incremental RLSC with recoding (Gamma)' ; 'Test accuracy vs \lambda'})
+%     bandplot( lrng , results.inc_rlsc_yesreb2.teAcc , 'red' , 0.1 , 1 , 2, '-');
+%     xlabel('\lambda')
+%     ylabel('Test accuracy')
+%     hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % contourf(lrng,1:numrep,results.bat_rlsc_yesreb.valAcc, 100, 'LineWidth',0);
+%     % set(gca,'Xscale','log');
+%     % xlabel('\lambda')
+%     % ylabel('Repetition')
+%     % colorbar
+%     % hold off
+% 
+%     % figure
+%     % hold on
+%     % title({'Batch RLSC, exact rebalancing' ; 'Validation accuracy vs \lambda'})
+%     % bandplot( lrng , results.bat_rlsc_yesreb.valAcc , 'red' , 0.1 , 1 , 2, '-');
+%     % xlabel('\lambda')
+%     % ylabel('Validation accuracy')
+%     % hold off
+% 
+% end
 
 
 %%  Play sound
