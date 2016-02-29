@@ -23,8 +23,8 @@ copyfile([tmp.path ,'/', ST.name , '.m'],[ resdir ,'/', ST.name , '.m'])
 run_bat_rlsc_noreb = 1;
 run_bat_rlsc_yesreb = 0;
 run_bat_rlsc_yesreb2 = 1;
-run_inc_rlsc_yesreb = 1;
-run_inc_rlsc_yesreb2 = 1;
+run_bat_rlsc_yesrec = 0;
+run_bat_rlsc_yesrec2 = 1;
 
 retrain = 1;
 trainPart = 0.8;
@@ -35,8 +35,8 @@ trainFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 % testFolder = 'martedi23';
 testFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 
-% ntr = [];
-ntr = 10000;
+ntr = [];
+% ntr = 1000;
 nte = []; 
 
 classes = 1:28; % classes to be extracted
@@ -53,15 +53,18 @@ classes = 1:28; % classes to be extracted
 % trainClassFreq = [0.1658*ones(1,2) 0.005 0.1658*ones(1,4)];
 % trainClassFreq = [0.1633*ones(1,2) 0.02 0.1633*ones(1,4)];
 % trainClassFreq = [0.3250*ones(1,3) 0.025];
-trainClassFreq = [0.0369*ones(1,27) 0.0025];
+trainClassFreq = [0.037*ones(1,27) 0.001];
 % trainClassFreq = [];
 testClassFreq = [];
 
 % Parameter selection
-numLambdas = 20;
+numLambdas = 10;
 minLambdaExp = -5;
 maxLambdaExp = 10;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
+
+% reweighting parameter
+alpha = 1/2;
 
 numrep = 5;
 
@@ -435,11 +438,11 @@ for k = 1:numrep
     
     
     
-    %% Incremental RLSC, recoding (sqrt(Gamma))
+    %% Batch RLSC, recoding (sqrt(Gamma))
     % Naive Linear Regularized Least Squares Classifier, 
     % with Tikhonov regularization parameter selection
 
-    if run_inc_rlsc_yesreb == 1
+    if run_bat_rlsc_yesrec == 1
 
         % Compute rebalancing matrix Gamma
         Gamma = zeros(ntr1);
@@ -476,7 +479,7 @@ for k = 1:numrep
                 CM = CM ./ repmat(sum(CM,2),1,2);
                 currAcc = trace(CM)/2;                
             end
-            results.inc_rlsc_yesreb.valAcc(k,lidx) = currAcc;
+            results.bat_rlsc_yesrec.valAcc(k,lidx) = currAcc;
 
             if currAcc > bestAcc
                 bestAcc = currAcc;
@@ -494,7 +497,7 @@ for k = 1:numrep
                 CM = CM ./ repmat(sum(CM,2),1,2);
                 currAcc = trace(CM)/2;                
             end
-            results.inc_rlsc_yesreb.teAcc(k,lidx) = currAcc;
+            results.bat_rlsc_yesrec.teAcc(k,lidx) = currAcc;
         end
 
         % Retrain on full training set with selected model parameters,
@@ -533,20 +536,20 @@ for k = 1:numrep
             currAcc = trace(CM)/2;
         end
         
-        results.inc_rlsc_yesreb.ntr = ntr;
-        results.inc_rlsc_yesreb.nte = nte;
-        results.inc_rlsc_yesreb.testAccBuf(k) = currAcc;
-        results.inc_rlsc_yesreb.testCM(k,:,:) = CM;
-        results.inc_rlsc_yesreb.bestValAccBuf(k) = bestAcc;
+        results.bat_rlsc_yesrec.ntr = ntr;
+        results.bat_rlsc_yesrec.nte = nte;
+        results.bat_rlsc_yesrec.testAccBuf(k) = currAcc;
+        results.bat_rlsc_yesrec.testCM(k,:,:) = CM;
+        results.bat_rlsc_yesrec.bestValAccBuf(k) = bestAcc;
 
     end
     
     
-    %% Incremental RLSC, recoding (Gamma)
+    %% Batch RLSC, recoding (Gamma)
     % Naive Linear Regularized Least Squares Classifier, 
     % with Tikhonov regularization parameter selection
 
-    if run_inc_rlsc_yesreb2 == 1
+    if run_bat_rlsc_yesrec2 == 1
 
         % Compute rebalancing matrix Gamma
         Gamma = zeros(ntr1);
@@ -584,7 +587,7 @@ for k = 1:numrep
                 CM = CM ./ repmat(sum(CM,2),1,2);
                 currAcc = trace(CM)/2;                
             end
-            results.inc_rlsc_yesreb2.valAcc(k,lidx) = currAcc;
+            results.bat_rlsc_yesrec2.valAcc(k,lidx) = currAcc;
 
             if currAcc > bestAcc
                 bestAcc = currAcc;
@@ -602,7 +605,7 @@ for k = 1:numrep
                 CM = CM ./ repmat(sum(CM,2),1,2);
                 currAcc = trace(CM)/2;                
             end
-            results.inc_rlsc_yesreb2.teAcc(k,lidx) = currAcc;
+            results.bat_rlsc_yesrec2.teAcc(k,lidx) = currAcc;
         end
 
         % Retrain on full training set with selected model parameters,
@@ -641,11 +644,11 @@ for k = 1:numrep
             currAcc = trace(CM)/2;
         end
         
-        results.inc_rlsc_yesreb2.ntr = ntr;
-        results.inc_rlsc_yesreb2.nte = nte;
-        results.inc_rlsc_yesreb2.testAccBuf(k) = currAcc;
-        results.inc_rlsc_yesreb2.testCM(k,:,:) = CM;
-        results.inc_rlsc_yesreb2.bestValAccBuf(k) = bestAcc;
+        results.bat_rlsc_yesrec2.ntr = ntr;
+        results.bat_rlsc_yesrec2.nte = nte;
+        results.bat_rlsc_yesrec2.testAccBuf(k) = currAcc;
+        results.bat_rlsc_yesrec2.testCM(k,:,:) = CM;
+        results.bat_rlsc_yesrec2.bestValAccBuf(k) = bestAcc;
     end    
 end
 
@@ -699,32 +702,32 @@ if run_bat_rlsc_noreb == 1
     display(' ');
 end
 
-if run_inc_rlsc_yesreb == 1    
+if run_bat_rlsc_yesrec == 1    
 
     display('Incremental RLSC, with recoding (sqrt(Gamma))');
-    best_val_acc_avg = mean(results.inc_rlsc_yesreb.bestValAccBuf);
-    best_val_acc_std = std(results.inc_rlsc_yesreb.bestValAccBuf,1);
+    best_val_acc_avg = mean(results.bat_rlsc_yesrec.bestValAccBuf);
+    best_val_acc_std = std(results.bat_rlsc_yesrec.bestValAccBuf,1);
 
     display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
 
-    test_acc_avg = mean(results.inc_rlsc_yesreb.testAccBuf);
-    test_acc_std = std(results.inc_rlsc_yesreb.testAccBuf,1);
+    test_acc_avg = mean(results.bat_rlsc_yesrec.testAccBuf);
+    test_acc_std = std(results.bat_rlsc_yesrec.testAccBuf,1);
 
     display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)]);
     display(' ');
 end
 
 
-if run_inc_rlsc_yesreb2 == 1    
+if run_bat_rlsc_yesrec2 == 1    
 
     display('Incremental RLSC, with recoding (Gamma)');
-    best_val_acc_avg = mean(results.inc_rlsc_yesreb2.bestValAccBuf);
-    best_val_acc_std = std(results.inc_rlsc_yesreb2.bestValAccBuf,1);
+    best_val_acc_avg = mean(results.bat_rlsc_yesrec2.bestValAccBuf);
+    best_val_acc_std = std(results.bat_rlsc_yesrec2.bestValAccBuf,1);
 
     display(['Best validation accuracy = ', num2str(best_val_acc_avg) , ' +/- ' , num2str(best_val_acc_std)])
 
-    test_acc_avg = mean(results.inc_rlsc_yesreb2.testAccBuf);
-    test_acc_std = std(results.inc_rlsc_yesreb2.testAccBuf,1);
+    test_acc_avg = mean(results.bat_rlsc_yesrec2.testAccBuf);
+    test_acc_std = std(results.bat_rlsc_yesrec2.testAccBuf,1);
 
     display(['Test accuracy = ', num2str(test_acc_avg) , ' +/- ' , num2str(test_acc_std)]);
     display(' ');
@@ -901,7 +904,7 @@ end
 
 
 
-if run_inc_rlsc_yesreb == 1    
+if run_bat_rlsc_yesrec == 1    
 
     % Batch RLSC, exact rebalancing
     % figure
@@ -957,7 +960,7 @@ end
 
 
 
-if run_inc_rlsc_yesreb2 == 1    
+if run_bat_rlsc_yesrec2 == 1    
 
     % Batch RLSC, exact rebalancing
     % figure
