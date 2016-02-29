@@ -53,7 +53,7 @@ classes = 1:28; % classes to be extracted
 % trainClassFreq = [0.1658*ones(1,2) 0.005 0.1658*ones(1,4)];
 % trainClassFreq = [0.1633*ones(1,2) 0.02 0.1633*ones(1,4)];
 % trainClassFreq = [0.3250*ones(1,3) 0.025];
-trainClassFreq = [0.037*ones(1,27) 0.001];
+trainClassFreq = [0.0363*ones(1,27) 0.002];
 % trainClassFreq = [];
 testClassFreq = [];
 
