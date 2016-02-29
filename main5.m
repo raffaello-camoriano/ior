@@ -556,7 +556,7 @@ for k = 1:numrep
         for i = 1:ntr1
 
             currClassIdx = find(Ytr1(i,:) == 1);
-            Gamma(i,i) = computeGamma(p,currClassIdx);
+            Gamma(i,i) = computeGamma(p,currClassIdx)^alpha;
         end
 
         
@@ -617,7 +617,7 @@ for k = 1:numrep
             Gamma1 = zeros(ntr);
             for i = 1:ntr
                 currClassIdx = find(Ytr(i,:) == 1);
-                Gamma1(i,i) = computeGamma(p,currClassIdx);
+                Gamma1(i,i) = computeGamma(p,currClassIdx)^alpha;
             end
                 
             % Compute cov mat
