@@ -1,4 +1,3 @@
-clearAllButBP;
 close all;
 conf;
 

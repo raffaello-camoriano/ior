@@ -1,4 +1,3 @@
-clearAllButBP;
 close all;
 conf;
 
@@ -53,7 +52,7 @@ classes = 1:28; % classes to be extracted
 % trainClassFreq = [0.1658*ones(1,2) 0.005 0.1658*ones(1,4)];
 % trainClassFreq = [0.1633*ones(1,2) 0.02 0.1633*ones(1,4)];
 % trainClassFreq = [0.3250*ones(1,3) 0.025];
-trainClassFreq = [0.0363*ones(1,27) 0.002];
+trainClassFreq = [0.0370*ones(1,27) 0.0005];
 % trainClassFreq = [];
 testClassFreq = [];
 
@@ -738,7 +737,7 @@ end
 
 if saveResult == 1
 
-    save([resdir '/workspace.mat']);
+    save([resdir '/workspace.mat' , '-v7.3']);
 end
 
 %% Plots
