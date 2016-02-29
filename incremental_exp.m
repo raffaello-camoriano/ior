@@ -1,6 +1,6 @@
-conf;
 clearAllButBP;
 close all;
+conf;
 
 %% Set experimental results relative directory name
 
