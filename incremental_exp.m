@@ -11,7 +11,7 @@ dt = clock;
 dt = fix(dt); 	% Get timestamp
 expDir = ['Exp_' , customStr , '_' , mat2str(dt)];
 
-resdir = ['results/incremental_exp/' , expDir];
+resdir = [resRoot , 'results/incremental_exp/' , expDir];
 mkdir(resdir);
 
 %% Save current script and loadExp in results
