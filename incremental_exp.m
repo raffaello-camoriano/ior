@@ -60,9 +60,10 @@ lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 % Recoding parameter
 alpha = 1/2;
 
+% maxiter = 745;
 maxiter = 100;
 
-numrep = 5;
+numrep = 1;
 
 % Instantiate storage structures
 results.bat_rlsc_yesreb.testCM = zeros(numrep,numel(classes),1, numel(classes), numel(classes));
@@ -138,8 +139,8 @@ for k = 1:numrep
         % Split training set in balanced (for pretraining) and imbalanced
         % (for incremental learning) subsets
         
-        [~,tmp] = find(Ytr == 1);
-        idx_bal = find(tmp ~= j);
+        [tmp1,tmp2] = find(Ytr == 1);
+        idx_bal = tmp1(tmp2 ~= j);
         Xtr_bal = Xtr(idx_bal , :);
         Ytr_bal = Ytr(idx_bal , :);
         ntr_bal = size(Xtr_bal,1);
@@ -271,7 +272,7 @@ for k = 1:numrep
                 end
 
                 % Update XtY term
-                XtY_tmp = XtY_tmp + Xtr_imbal(q,:)' * Ytr_imbal(q,:);
+%                 XtY_tmp = XtY_tmp + Xtr_imbal(q,:)' * Ytr_imbal(q,:);
                 ntr_tmp = ntr_tmp + 1;
 
                 lstar = 0;      % Best lambda
@@ -284,7 +285,7 @@ for k = 1:numrep
                         R_tmp{lidx} = R{lidx};  % Compute first Cholesky factorization of XtX + n * lambda * I
                     end
                     % Update Cholesky factor
-                    R_tmp{lidx} = cholupdatek(R_tmp{lidx}, Xtr_imbal(q,:)' , '+');                
+%                     R_tmp{lidx} = cholupdatek(R_tmp{lidx}, Xtr_imbal(q,:)' , '+');                
                     
                     % Training
                     w = R_tmp{lidx} \ (R_tmp{lidx}' \ XtY_tmp );                    
