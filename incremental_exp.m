@@ -19,11 +19,10 @@ tmp = what;
 copyfile([tmp.path ,'/', ST.name , '.m'],[ resdir ,'/', ST.name , '.m'])
 
 %% Experiments setup
-run_bat_rlsc_yesreb = 0;    % Batch with exact rebalancing
-run_inc_rlsc_norec = 1;     % Naive incremental with no recoding
-run_inc_rlsc_yesrec = 1;    % Incremental with recoding
+run_bat_rlsc_yesreb = 0;    % Batch RLSC with exact rebalancing
+run_inc_rlsc_norec = 1;     % Naive incremental RLSC with no recoding
+run_inc_rlsc_yesrec = 1;    % Incremental RLSC with recoding
 
-retrain = 1;
 trainPart = 0.8;
 
 dataRoot =  '/home/kammo/Repos/ior/data/caffe_centralcrop_meanimagenet2012/';
@@ -64,11 +63,15 @@ alpha = 1/2;
 
 numrep = 1;
 
+% Instantiate storage structures
 results.bat_rlsc_yesreb.testCM = zeros(numrep,numel(classes),1, numel(classes), numel(classes));
 results.bat_rlsc_yesreb.bestValAccBuf = zeros(numrep,numel(classes),1);
 results.bat_rlsc_yesreb.valAcc = zeros(numrep,numel(classes),1,numLambdas);
 results.bat_rlsc_yesreb.teAcc = zeros(numrep,numel(classes),1,numLambdas);
+results.bat_rlsc_yesreb.trainTime = zeros(numrep,numel(classes),1,numLambdas);
+
 results.inc_rlsc_norec = results.bat_rlsc_yesreb;
+
 results.inc_rlsc_yesrec = results.bat_rlsc_yesreb;
 
 
@@ -115,7 +118,8 @@ for k = 1:numrep
     % Splitting
 %     ntr1 = round(ntr*trainPart);
     ntr1 = ntr;
-    nval1 = round(ntr*(1-trainPart));
+%     nval1 = round(ntr*(1-trainPart));
+    nval1 = nte;
     tr1idx = 1:ntr;
     validx = (1:nval1);
     teidx = (1:nval1);
@@ -127,7 +131,8 @@ for k = 1:numrep
     Yte = Yte(nval1+1:end,:);
     
     
-    for j = 1:t
+%     for j = 1:t
+    for j = t
         
         % Split training set in balanced (for pretraining) and imbalanced
         % (for incremental learning) subsets
@@ -225,22 +230,22 @@ for k = 1:numrep
                     end
 
                     % Compute current test accuracy
-                    Ytepred_raw = Xte * w;
-
-                    if t > 2
-                        Ytepred = ds.scoresToClasses(Ytepred_raw);
-                        [currAcc , CM] = weightedAccuracy2( Yte, Ytepred , classes);
-                    else
-                        CM = confusionmat(Yte,sign(Ytepred_raw));
-                        CM = CM ./ repmat(sum(CM,2),1,2);
-                        currAcc = trace(CM)/2;                
-                    end
-                    results.bat_rlsc_yesreb.teAcc(k,j,q,lidx) = currAcc;
+%                     Ytepred_raw = Xte * w;
+% 
+%                     if t > 2
+%                         Ytepred = ds.scoresToClasses(Ytepred_raw);
+%                         [currAcc , CM] = weightedAccuracy2( Yte, Ytepred , classes);
+%                     else
+%                         CM = confusionmat(Yte,sign(Ytepred_raw));
+%                         CM = CM ./ repmat(sum(CM,2),1,2);
+%                         currAcc = trace(CM)/2;                
+%                     end
+%                     results.bat_rlsc_yesreb.teAcc(k,j,q,lidx) = currAcc;
                 end
 
                 results.bat_rlsc_yesreb.ntr = ntr;
                 results.bat_rlsc_yesreb.nte = nte;
-                results.bat_rlsc_yesreb.testCM(k,j,q,:,:) = CM;
+%                 results.bat_rlsc_yesreb.testCM(k,j,q,:,:) = CM;
                 results.bat_rlsc_yesreb.bestValAccBuf(k,j,q) = bestAcc;
             end
         end
@@ -304,24 +309,24 @@ for k = 1:numrep
                         lstar = l;
                     end
 
-                    % Compute current test accuracy
-                    Ytepred_raw = Xte * w;
-
-                    if t > 2
-                        Ytepred = ds.scoresToClasses(Ytepred_raw);
-                        [currAcc , CM] = weightedAccuracy2( Yte, Ytepred , classes);
-                    else
-                        CM = confusionmat(Yte,sign(Ytepred_raw));
-                        CM = CM ./ repmat(sum(CM,2),1,2);
-                        currAcc = trace(CM)/2;                
-                    end
-
-                    results.inc_rlsc_norec.teAcc(k,j,q,lidx) = currAcc;
+%                     % Compute current test accuracy
+%                     Ytepred_raw = Xte * w;
+% 
+%                     if t > 2
+%                         Ytepred = ds.scoresToClasses(Ytepred_raw);
+%                         [currAcc , CM] = weightedAccuracy2( Yte, Ytepred , classes);
+%                     else
+%                         CM = confusionmat(Yte,sign(Ytepred_raw));
+%                         CM = CM ./ repmat(sum(CM,2),1,2);
+%                         currAcc = trace(CM)/2;                
+%                     end
+% 
+%                     results.inc_rlsc_norec.teAcc(k,j,q,lidx) = currAcc;
                 end
 
                 results.inc_rlsc_norec.ntr = ntr;
                 results.inc_rlsc_norec.nte = nte;
-                results.inc_rlsc_norec.testCM(k,j,q,:,:) = CM;
+%                 results.inc_rlsc_norec.testCM(k,j,q,:,:) = CM;
                 results.inc_rlsc_norec.bestValAccBuf(k,j,q) = bestAcc;
             end
         end
@@ -397,23 +402,23 @@ for k = 1:numrep
                     end
 
                     % Compute current test accuracy
-                    Ytepred_raw = Xte * w;
-
-                    if t > 2
-                        Ytepred = ds.scoresToClasses(Ytepred_raw);
-                        [currAcc , ~] = weightedAccuracy2( Yte, Ytepred , classes);
-                    else
-                        CM = confusionmat(Yte,sign(Ytepred_raw));
-                        CM = CM ./ repmat(sum(CM,2),1,2);
-                        currAcc = trace(CM)/2;                
-                    end
-
-                    results.inc_rlsc_yesrec.teAcc(k,j,q,lidx) = currAcc;
+%                     Ytepred_raw = Xte * w;
+% 
+%                     if t > 2
+%                         Ytepred = ds.scoresToClasses(Ytepred_raw);
+%                         [currAcc , ~] = weightedAccuracy2( Yte, Ytepred , classes);
+%                     else
+%                         CM = confusionmat(Yte,sign(Ytepred_raw));
+%                         CM = CM ./ repmat(sum(CM,2),1,2);
+%                         currAcc = trace(CM)/2;                
+%                     end
+% 
+%                     results.inc_rlsc_yesrec.teAcc(k,j,q,lidx) = currAcc;
                 end
 
                 results.inc_rlsc_yesrec.ntr = ntr;
                 results.inc_rlsc_yesrec.nte = nte;
-                results.inc_rlsc_yesrec.testCM(k,j,q,:,:) = CM;
+%                 results.inc_rlsc_yesrec.testCM(k,j,q,:,:) = CM;
                 results.inc_rlsc_yesrec.bestValAccBuf(k,j,q) = bestAcc;
             end
         end
@@ -513,7 +518,8 @@ end
 
 %% Plots
 
-for c = 1:numel(classes)
+% for c = 1:numel(classes)
+for c = t
     figure
     hold on
     plot(squeeze(mean(results.inc_rlsc_norec.bestValAccBuf(:,c,1:out(c,2)),1)))
