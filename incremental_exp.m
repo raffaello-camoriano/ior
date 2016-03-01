@@ -61,9 +61,9 @@ lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 alpha = 1/2;
 
 % maxiter = 745;
-maxiter = 100;
+maxiter = 200;
 
-numrep = 1;
+numrep = 5;
 
 % Instantiate storage structures
 results.bat_rlsc_yesreb.testCM = zeros(numrep,numel(classes),1, numel(classes), numel(classes));
@@ -134,7 +134,8 @@ for k = 1:numrep
     
     
 %     for j = 1:t
-    for j = t
+%     for j = t
+    for j = 5
         
         % Split training set in balanced (for pretraining) and imbalanced
         % (for incremental learning) subsets
@@ -354,15 +355,24 @@ for k = 1:numrep
 
         if run_inc_rlsc_yesrec == 1    
             
-            Xtr_tmp = Xtr_bal;
-            Ytr_tmp = Ytr_bal;
+            %Init
+            Xtr_tmp = zeros(size(Xtr_bal,1)+size(Xtr_imbal,1),d);
+            Ytr_tmp = zeros(size(Ytr_bal,1)+size(Ytr_imbal,1),t);
+            
+            Xtr_tmp(1:ntr_bal,:) = Xtr_bal;
+            Ytr_tmp(1:ntr_bal,:) = Ytr_bal;
+            
             R_tmp = cell(1,numLambdas);
             trainTime = 0;
+            ntr_tmp = size(Xtr_bal,1);
+            
             for q = 1:ntr_imbal
 
-                Xtr_tmp = [Xtr_tmp ; Xtr_imbal(q,:)];
-                Ytr_tmp = [Ytr_tmp ; Ytr_imbal(q,:)];
-                ntr_tmp = size(Xtr_tmp,1);
+%                 Xtr_tmp = [Xtr_tmp ; Xtr_imbal(q,:)];
+%                 Ytr_tmp = [Ytr_tmp ; Ytr_imbal(q,:)];
+                ntr_tmp = ntr_tmp + 1;
+                Xtr_tmp(ntr_tmp,:) = Xtr_imbal(q,:);
+                Ytr_tmp(ntr_tmp,:) = Ytr_imbal(q,:);
                 
                 tic
                 
@@ -381,7 +391,7 @@ for k = 1:numrep
                 end
                 
                 % Compute b
-                XtY_tmp = Xtr_tmp' * Gamma * Ytr_tmp;
+                XtY_tmp = Xtr_tmp(1:ntr_tmp,:)' * (Gamma * Ytr_tmp(1:ntr_tmp,:));
 
                 lstar = 0;      % Best lambda
                 bestAcc = 0;    % Highest accuracy
@@ -541,22 +551,65 @@ end
 %% Plots
 
 % for c = 1:numel(classes)
-for c = t
-
-    figure
-    hold on
-    plot(squeeze(mean(results.inc_rlsc_norec.bestValAccBuf(:,c,1:min(maxiter,out(c,2))),1)))
-    plot(squeeze(mean(results.inc_rlsc_yesrec.bestValAccBuf(:,c,1:min(maxiter,out(c,2))),1)))
-    title(['Test Error for imbalanced class # ' , num2str(c)]);
-    legend('Naive RRLSC','Recoded RRLSC')
-    xlabel('n_{imb}')
-    ylabel('Test Accuracy')
-    hold off    
+% for c = t
+for c = 5
     
-    figure
-    surf(squeeze(results.inc_rlsc_yesrec.valAcc(1,28,:,:)))
+    if numrep == 1
 
+        figure
+        hold on
+        plot(squeeze(mean(results.inc_rlsc_norec.bestValAccBuf(:,c,1:min(maxiter,out(c,2))),1)))
+        plot(squeeze(mean(results.inc_rlsc_yesrec.bestValAccBuf(:,c,1:min(maxiter,out(c,2))),1)))
+        title(['Test Error for imbalanced class # ' , num2str(c)]);
+        legend('Naive RRLSC','Recoded RRLSC')
+        xlabel('n_{imb}')
+        ylabel('Test Accuracy')
+        hold off    
+
+        figure
+        surf(squeeze(results.inc_rlsc_yesrec.valAcc(1,c,:,:)))
+
+        figure
+        hold on
+        plot(squeeze(mean(results.inc_rlsc_norec.trainTime(:,c,1:min(maxiter,out(c,2))),1)))
+        plot(squeeze(mean(results.inc_rlsc_yesrec.trainTime(:,c,1:min(maxiter,out(c,2))),1)))
+        title(['Training Time for imbalanced class # ' , num2str(c)]);
+        legend('Naive RRLSC','Recoded RRLSC')
+        xlabel('n_{imb}')
+        ylabel('Training Time')
+        hold off  
+
+    else
+        
+        figure
+        hold on
+        h1 = bandplot(1:min(maxiter,out(c,2)),squeeze(results.inc_rlsc_norec.bestValAccBuf(:,c,1:min(maxiter,out(c,2)))), ...
+            'r' , 0.1 , 0 , 1 , '-');
+        h2 = bandplot(1:min(maxiter,out(c,2)),squeeze(results.inc_rlsc_yesrec.bestValAccBuf(:,c,1:min(maxiter,out(c,2)))), ...
+            'b' , 0.1 , 0 , 1 , '-');
+        title(['Test Error for imbalanced class # ' , num2str(c)]);
+        legend([h1,h2],'Naive RRLSC','Recoded RRLSC','Location','southeast')
+        xlabel('n_{imb}')
+        ylabel('Test Accuracy')
+        hold off    
+
+        figure
+        surf(squeeze(results.inc_rlsc_yesrec.valAcc(1,c,:,:)))
+
+        figure
+        hold on
+        h1 = bandplot(1:min(maxiter,out(c,2)),squeeze(results.inc_rlsc_norec.trainTime(:,c,1:min(maxiter,out(c,2)))), ...
+            'r' , 0.1 , 0 , 1 , '-');
+        h2 = bandplot(1:min(maxiter,out(c,2)),squeeze(results.inc_rlsc_yesrec.trainTime(:,c,1:min(maxiter,out(c,2)))), ...
+            'b' , 0.1 , 0 , 1 , '-');
+        title(['Training Time for imbalanced class # ' , num2str(c)]);
+        legend([h1,h2],'Naive RRLSC','Recoded RRLSC','Location','southeast')
+        xlabel('n_{imb}')
+        ylabel('Training Time')
+        hold off    
+        
     
+    end    
 end
 % 
 % if run_bat_rlsc_yesreb == 1    
