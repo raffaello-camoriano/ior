@@ -52,9 +52,9 @@ trainClassFreq = [];
 testClassFreq = [];
 
 % Tikhonov Parameter selection
-numLambdas = 10;
+numLambdas = 6;
 minLambdaExp = -5;
-maxLambdaExp = 10;
+maxLambdaExp = 2;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
 % Recoding parameter
