@@ -29,13 +29,13 @@ dataRoot =  '/home/kammo/Repos/ior/data/caffe_centralcrop_meanimagenet2012/';
 trainFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 testFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 
-% ntr = [];
-ntr = 1000;
+ntr = [];
+% ntr = 1000;
 nte = []; 
 
-% classes = 1:28; % classes to be extracted
+classes = 1:28; % classes to be extracted
 % classes = 1:4; % classes to be extracted
-classes = 1:4:28; % classes to be extracted
+% classes = 1:4:28; % classes to be extracted
 % classes = [1 8]; % classes to be extracted
 % classes = 0:9; % classes to be extracted
 
@@ -57,11 +57,12 @@ minLambdaExp = -5;
 maxLambdaExp = 10;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
-
 % Recoding parameter
 alpha = 1/2;
 
-numrep = 1;
+maxiter = 100;
+
+numrep = 5;
 
 % Instantiate storage structures
 results.bat_rlsc_yesreb.testCM = zeros(numrep,numel(classes),1, numel(classes), numel(classes));
@@ -146,7 +147,8 @@ for k = 1:numrep
         idx_imbal = setdiff(1:ntr , idx_bal);
         Xtr_imbal = Xtr(idx_imbal , :);
         Ytr_imbal = Ytr(idx_imbal , :);
-        ntr_imbal = size(Xtr_imbal,1);
+%         ntr_imbal = size(Xtr_imbal,1);
+        ntr_imbal = maxiter;
         
         
         % Pre-compute batch model on points not belonging to class j
@@ -163,8 +165,9 @@ for k = 1:numrep
             l = lrng(lidx);
 
             % Train on TR1
-            w{lidx} = (XtX + ntr_bal * l * eye(d)) \ XtY;
+%             w{lidx} = (XtX + ntr_bal * l * eye(d)) \ XtY;
             R{lidx} = chol(XtX + ntr_bal * l * eye(d), 'upper');  
+%             R{lidx} = chol(XtX + l * eye(d), 'upper');  
         end
         
     
@@ -215,7 +218,7 @@ for k = 1:numrep
 
                     if t > 2
                         Yval1pred = ds.scoresToClasses(Yval1pred_raw);
-                        [currAcc , ~] = weightedAccuracy2( Yval1, Yval1pred , classes);
+                        [currAcc , CM] = weightedAccuracy2( Yval1, Yval1pred , classes);
                     else
 
                         CM = confusionmat(Yval1,sign(Yval1pred_raw));
@@ -263,9 +266,8 @@ for k = 1:numrep
 
                 if q == 1
                     % Compute cov mat and b
-                    XtX_tmp = XtX;
                     XtY_tmp = XtY;   
-                    ntr_tmp = size(XtX_tmp,1);
+                    ntr_tmp = ntr_bal;
                 end
 
                 % Update XtY term
@@ -284,7 +286,6 @@ for k = 1:numrep
                     % Update Cholesky factor
                     R_tmp{lidx} = cholupdatek(R_tmp{lidx}, Xtr_imbal(q,:)' , '+');                
                     
-
                     % Training
                     w = R_tmp{lidx} \ (R_tmp{lidx}' \ XtY_tmp );                    
 
@@ -295,7 +296,7 @@ for k = 1:numrep
 
                     if t > 2
                         Yval1pred = ds.scoresToClasses(Yval1pred_raw);
-                        [currAcc , ~] = weightedAccuracy2( Yval1, Yval1pred , classes);
+                        [currAcc , CM] = weightedAccuracy2( Yval1, Yval1pred , classes);
                     else
                         CM = confusionmat(Yval1,sign(Yval1pred_raw));
                         CM = CM ./ repmat(sum(CM,2),1,2);
@@ -387,7 +388,7 @@ for k = 1:numrep
 
                     if t > 2
                         Yval1pred = ds.scoresToClasses(Yval1pred_raw);
-                        [currAcc , ~] = weightedAccuracy2( Yval1, Yval1pred , classes);
+                        [currAcc , CM] = weightedAccuracy2( Yval1, Yval1pred , classes);
                     else
                         CM = confusionmat(Yval1,sign(Yval1pred_raw));
                         CM = CM ./ repmat(sum(CM,2),1,2);
@@ -427,7 +428,7 @@ for k = 1:numrep
 
         if saveResult == 1
 
-            save([resdir '/workspace.mat']);
+            save([resdir '/workspace.mat'] , '-v7.3');
         end
         
     end
@@ -520,12 +521,21 @@ end
 
 % for c = 1:numel(classes)
 for c = t
+
     figure
     hold on
-    plot(squeeze(mean(results.inc_rlsc_norec.bestValAccBuf(:,c,1:out(c,2)),1)))
-    plot(squeeze(mean(results.inc_rlsc_yesrec.bestValAccBuf(:,c,1:out(c,2)),1)))
+    plot(squeeze(mean(results.inc_rlsc_norec.bestValAccBuf(:,c,1:min(maxiter,out(c,2))),1)))
+    plot(squeeze(mean(results.inc_rlsc_yesrec.bestValAccBuf(:,c,1:min(maxiter,out(c,2))),1)))
     title(['Test Error for imbalanced class # ' , num2str(c)]);
-    hold off
+    legend('Naive RRLSC','Recoded RRLSC')
+    xlabel('n_{imb}')
+    ylabel('Test Accuracy')
+    hold off    
+    
+    figure
+    surf(squeeze(results.inc_rlsc_yesrec.valAcc(1,28,:,:)))
+
+    
 end
 % 
 % if run_bat_rlsc_yesreb == 1    
@@ -744,7 +754,7 @@ end
 % 
 % 
 % 
-% if run_inc_rlsc_yesreb2 == 1    
+% if run_inc_rlsc_yesrec2 == 1    
 % 
 %     % Batch RLSC, exact rebalancing
 %     % figure
@@ -772,7 +782,7 @@ end
 %     figure
 %     hold on
 %     title({'Incremental RLSC with recoding (Gamma)' ; 'Test accuracy vs \lambda'})
-%     bandplot( lrng , results.inc_rlsc_yesreb2.teAcc , 'red' , 0.1 , 1 , 2, '-');
+%     bandplot( lrng , results.inc_rlsc_yesrec.valAcc , 'red' , 0.1 , 1 , 2, '-');
 %     xlabel('\lambda')
 %     ylabel('Test accuracy')
 %     hold off
