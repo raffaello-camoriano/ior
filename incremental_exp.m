@@ -70,7 +70,7 @@ results.bat_rlsc_yesreb.testCM = zeros(numrep,numel(classes),1, numel(classes), 
 results.bat_rlsc_yesreb.bestValAccBuf = zeros(numrep,numel(classes),1);
 results.bat_rlsc_yesreb.valAcc = zeros(numrep,numel(classes),1,numLambdas);
 results.bat_rlsc_yesreb.teAcc = zeros(numrep,numel(classes),1,numLambdas);
-results.bat_rlsc_yesreb.trainTime = zeros(numrep,numel(classes),1,numLambdas);
+results.bat_rlsc_yesreb.trainTime = zeros(numrep,numel(classes),1);
 
 results.inc_rlsc_norec = results.bat_rlsc_yesreb;
 
@@ -181,12 +181,15 @@ for k = 1:numrep
             Xtr_tmp = Xtr_bal;
             Ytr_tmp = Ytr_bal;
             
+            trainTime = 0;
+            
             for q = 1:ntr_imbal
                 
                 Xtr_tmp = [Xtr_tmp ; Xtr_imbal(q,:)];
                 Ytr_tmp = [Ytr_tmp ; Ytr_imbal(q,:)];
                 ntr_tmp = size(Xtr_tmp,1);
                 
+                tic 
                 % Compute p
                 [~,tmp] = find(Ytr_tmp == 1);
                 a = unique(tmp);
@@ -246,11 +249,14 @@ for k = 1:numrep
 %                     end
 %                     results.bat_rlsc_yesreb.teAcc(k,j,q,lidx) = currAcc;
                 end
+                
+                trainTime = trainTime + toc;
 
                 results.bat_rlsc_yesreb.ntr = ntr;
                 results.bat_rlsc_yesreb.nte = nte;
-%                 results.bat_rlsc_yesreb.testCM(k,j,q,:,:) = CM;
+                results.bat_rlsc_yesreb.testCM(k,j,q,:,:) = CM;
                 results.bat_rlsc_yesreb.bestValAccBuf(k,j,q) = bestAcc;
+                results.bat_rlsc_yesreb.trainTime(k,j,q) = trainTime;
             end
         end
 
@@ -263,6 +269,7 @@ for k = 1:numrep
         if run_inc_rlsc_norec == 1    
             
             R_tmp = cell(1,numLambdas);
+            trainTime = 0;
             for q = 1:ntr_imbal
 
                 if q == 1
@@ -271,9 +278,12 @@ for k = 1:numrep
                     ntr_tmp = ntr_bal;
                 end
 
+                tic
+
                 % Update XtY term
-%                 XtY_tmp = XtY_tmp + Xtr_imbal(q,:)' * Ytr_imbal(q,:);
+                XtY_tmp = XtY_tmp + Xtr_imbal(q,:)' * Ytr_imbal(q,:);
                 ntr_tmp = ntr_tmp + 1;
+                
 
                 lstar = 0;      % Best lambda
                 bestAcc = 0;    % Highest accuracy
@@ -285,7 +295,7 @@ for k = 1:numrep
                         R_tmp{lidx} = R{lidx};  % Compute first Cholesky factorization of XtX + n * lambda * I
                     end
                     % Update Cholesky factor
-%                     R_tmp{lidx} = cholupdatek(R_tmp{lidx}, Xtr_imbal(q,:)' , '+');                
+                    R_tmp{lidx} = cholupdatek(R_tmp{lidx}, Xtr_imbal(q,:)' , '+');                
                     
                     % Training
                     w = R_tmp{lidx} \ (R_tmp{lidx}' \ XtY_tmp );                    
@@ -325,11 +335,15 @@ for k = 1:numrep
 % 
 %                     results.inc_rlsc_norec.teAcc(k,j,q,lidx) = currAcc;
                 end
+                
+                
+                trainTime = trainTime + toc;
 
                 results.inc_rlsc_norec.ntr = ntr;
                 results.inc_rlsc_norec.nte = nte;
-%                 results.inc_rlsc_norec.testCM(k,j,q,:,:) = CM;
+                results.inc_rlsc_norec.testCM(k,j,q,:,:) = CM;
                 results.inc_rlsc_norec.bestValAccBuf(k,j,q) = bestAcc;
+                results.inc_rlsc_norec.trainTime(k,j,q) = trainTime;
             end
         end
 
@@ -343,11 +357,14 @@ for k = 1:numrep
             Xtr_tmp = Xtr_bal;
             Ytr_tmp = Ytr_bal;
             R_tmp = cell(1,numLambdas);
+            trainTime = 0;
             for q = 1:ntr_imbal
 
                 Xtr_tmp = [Xtr_tmp ; Xtr_imbal(q,:)];
                 Ytr_tmp = [Ytr_tmp ; Ytr_imbal(q,:)];
                 ntr_tmp = size(Xtr_tmp,1);
+                
+                tic
                 
                 % Compute p
                 [~,tmp] = find(Ytr_tmp == 1);
@@ -418,10 +435,13 @@ for k = 1:numrep
 %                     results.inc_rlsc_yesrec.teAcc(k,j,q,lidx) = currAcc;
                 end
 
+                trainTime = trainTime + toc;
+
                 results.inc_rlsc_yesrec.ntr = ntr;
                 results.inc_rlsc_yesrec.nte = nte;
-%                 results.inc_rlsc_yesrec.testCM(k,j,q,:,:) = CM;
+                results.inc_rlsc_yesrec.testCM(k,j,q,:,:) = CM;
                 results.inc_rlsc_yesrec.bestValAccBuf(k,j,q) = bestAcc;
+                results.inc_rlsc_yesrec.trainTime(k,j,q) = trainTime;
             end
         end
         
