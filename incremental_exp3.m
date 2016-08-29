@@ -1,6 +1,6 @@
 clc;
 close all;
-conf;
+confIncremental;
 
 %% Set experimental results relative directory name
 
@@ -29,9 +29,9 @@ trainPart = 0.8;
 
 switch datasetName
     case 'MNIST'
-        dataConf_MNIST;
+        dataConf_MNIST_inc;
     case 'iCub28'
-        dataConf_iCub28;
+        dataConf_iCub28_inc;
     otherwise
         error('dataset not recognized')
 end
