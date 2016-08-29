@@ -1,7 +1,9 @@
 coding = 'zeroOne';
 
 % reweighting parameter
-alpha = 1;
+% alpha = 1;
+alpha = 0.5;
+% alpha = 0;
 
 dsRef = @MNIST;
 
@@ -14,11 +16,11 @@ classes = 0:9; % classes to be extracted
 % Class frequencies for train and test sets
 
 % nLow = 2;
-nLow = 5;
+% nLow = 5;
 % nLow = 10;
 % nLow = 20;
 % nLow = 50;
-% nLow = 100;
+nLow = 100;
 
 lowFreq = 0.01;
 
