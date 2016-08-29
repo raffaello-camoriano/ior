@@ -1,3 +1,4 @@
+clc;
 close all;
 conf;
 
@@ -51,7 +52,7 @@ resultsArr = struct();
 
 maxiter = 100;
 
-numrep = 2;
+numrep = 20;
 
 % Instantiate storage structures
 results.bat_rlsc_yesreb.testCM = zeros(numrep,numel(classes),1, numel(classes), numel(classes));
@@ -454,6 +455,22 @@ for k = 1:numrep
                     end
 
                     trainTime = trainTime + toc;
+                    
+                    % Test on test set & compute accuracy
+
+                    % Predict test labels
+                    Ytepred_raw = Xte * w;
+
+                    % Compute current accuracy
+
+                    if t > 2
+                        Ytepred = ds.scoresToClasses(Ytepred_raw);
+                        [currAcc , CM] = weightedAccuracy2( Yte, Ytepred , classes);
+                    else
+                        CM = confusionmat(Yte,sign(Ytepred_raw));
+                        CM = CM ./ repmat(sum(CM,2),1,2);
+                        currAcc = trace(CM)/2;
+                    end
 
                     results(kk).inc_rlsc_yesrec.ntr = ntr;
                     results(kk).inc_rlsc_yesrec.nte = nte;
@@ -525,20 +542,28 @@ for c = imbClassArr
             hold off    
         end
 
-        figure
-        surf(squeeze(results.inc_rlsc_yesrec.valAcc(1,c,:,:)))
-
-        figure
-        hold on
-        h1 = bandplot(1:min(maxiter,out(c,2)),squeeze(results.inc_rlsc_norec.trainTime(:,c,1:min(maxiter,out(c,2)))), ...
-            'r' , 0.1 , 0 , 1 , '-');
-        h2 = bandplot(1:min(maxiter,out(c,2)),squeeze(results.inc_rlsc_yesrec.trainTime(:,c,1:min(maxiter,out(c,2)))), ...
-            'b' , 0.1 , 0 , 1 , '-');
-        title(['Training Time for imbalanced class # ' , num2str(c)]);
-        legend([h1,h2],'Naive RRLSC','Recoded RRLSC','Location','southeast')
-        xlabel('n_{imb}')
-        ylabel('Training Time')
-        hold off    
+        for kk = 1:numAlpha
+            figure
+            hold on
+            title({'Regularization path' ; ['\alpha = ', num2str(alphaArr(kk))]});
+            surf(squeeze(results(kk).inc_rlsc_yesrec.valAcc(1,c,:,:)))
+            xlabel('\lambda');
+            ylabel('# update');
+            zlabel('Validation error');
+            hold off
+        end
+%         
+%         figure
+%         hold on
+%         h1 = bandplot(1:min(maxiter,out(c,2)),squeeze(results.inc_rlsc_norec.trainTime(:,c,1:min(maxiter,out(c,2)))), ...
+%             'r' , 0.1 , 0 , 1 , '-');
+%         h2 = bandplot(1:min(maxiter,out(c,2)),squeeze(results.inc_rlsc_yesrec.trainTime(:,c,1:min(maxiter,out(c,2)))), ...
+%             'b' , 0.1 , 0 , 1 , '-');
+%         title(['Training Time for imbalanced class # ' , num2str(c)]);
+%         legend([h1,h2],'Naive RRLSC','Recoded RRLSC','Location','southeast')
+%         xlabel('n_{imb}')
+%         ylabel('Training Time')
+%         hold off    
         
     
     end    
