@@ -13,6 +13,7 @@ testFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 
 % ntr = [];
 ntr = 19629;
+% ntr = 200;
 nte = []; 
 
 
@@ -25,23 +26,27 @@ classes = 1:28; % classes to be extracted
 
 
 % Class frequencies for train and test sets
+imbClassArr = 28;   % Imbalanced class(es)
 
 % nLow = 2;
 % nLow = 5;
 % nLow = 11;
 % nLow = 20;
 % nLow = 50;
-nLow = 100;
+% nLow = 100;
+nLow = [];
 
 lowFreq = 0.01;
 
-if ~isempty(nLow)
-    
-    lowFreq = nLow/ntr;
-end
+% if ~isempty(nLow)
+%     
+%     lowFreq = nLow/ntr;
+% end
+% 
+% highFreq = (1-lowFreq)/(numel(classes)-1);
 
-highFreq = (1-lowFreq)/(numel(classes)-1);
-trainClassFreq = [ highFreq * ones(1,27) lowFreq];
+% trainClassFreq = [ highFreq * ones(1,27) lowFreq];
+trainClassFreq = 1/28 * ones(1,28);
 
 testClassFreq = [];
 

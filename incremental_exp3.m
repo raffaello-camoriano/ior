@@ -10,8 +10,9 @@ run_inc_rlsc_yesrec = 1;    % Incremental RLSC with recoding
 
 trainPart = 0.8;    % Training set part
 maxiter = 100;      % Maximum number of updates
-numrep = 10;        % Number of repetitions of the experiment
-imbClassArr = 10;   % Imbalanced class(es)
+numrep = 5;        % Number of repetitions of the experiment
+
+saveResult = 1;
 
 switch datasetName
     case 'MNIST'
@@ -78,10 +79,20 @@ for k = 1:numrep
     ds.mixUpTrainIdx;
     ds.mixUpTestIdx;
     
-    Xtr = ds.X(ds.trainIdx,:);
+    if applyPCA == 1
+
+        % Apply PCA to reduce d
+        [~, ~, X] = PCA(ds.X, m);
+        Xtr = X(ds.trainIdx,:);
+        Xte = X(ds.testIdx,:);
+    else
+        Xtr = ds.X(ds.trainIdx,:);
+        Xte = ds.X(ds.testIdx,:);
+    end
+    
     Ytr = ds.Y(ds.trainIdx,:);
-    Xte = ds.X(ds.testIdx,:);
     Yte = ds.Y(ds.testIdx,:);
+
     
     ntr = size(Xtr,1);
     nte = size(Xte,1);
@@ -479,7 +490,7 @@ for k = 1:numrep
     end
 end
 
-% Save workspace
+%% Save workspace
 
 if saveResult == 1
 
