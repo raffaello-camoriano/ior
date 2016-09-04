@@ -11,10 +11,6 @@ trainFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 % testFolder = 'martedi23';
 testFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 
-% ntr = [];
-ntr = 19629;
-% ntr = 200;
-nte = []; 
 
 
 
@@ -36,7 +32,7 @@ imbClassArr = 28;   % Imbalanced class(es)
 % nLow = 100;
 nLow = [];
 
-lowFreq = 0.01;
+% lowFreq = 0.01;
 
 % if ~isempty(nLow)
 %     
@@ -46,9 +42,18 @@ lowFreq = 0.01;
 % highFreq = (1-lowFreq)/(numel(classes)-1);
 
 % trainClassFreq = [ highFreq * ones(1,27) lowFreq];
-trainClassFreq = 1/28 * ones(1,28);
+% trainClassFreq = 1/28 * ones(1,28);
+trainClassFreq = [];
+trainClassNum = 100 * ones(1,28);
 
-testClassFreq = [];
+% ntr = [];
+% ntr = 19629;
+ntr = 2800;
+% ntr = 200;
+nte = []; 
+
+testClassFreq = 1/28 * ones(1,28);
+testClassNum = [];
 
 % Class frequencies for train and test sets
 % trainClassFreq = [0.1 0.9];

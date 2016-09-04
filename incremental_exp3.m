@@ -69,7 +69,7 @@ for k = 1:numrep
             ds = MNIST(ntr , nte, coding , 0, 0, 0, {classes , trainClassFreq, testClassFreq});
 
         case 'iCub28'
-            ds = iCubWorld28(ntr , nte, 'zeroOne' , 1, 1, 0, {classes , trainClassFreq, testClassFreq, {}, trainFolder, testFolder});
+            ds = iCubWorld28(ntr , nte, 'zeroOne' , 1, 1, 0, {classes , trainClassFreq, testClassFreq, trainClassNum, testClassNum, {}, trainFolder, testFolder});
 
         otherwise
             error('dataset not recognized')
