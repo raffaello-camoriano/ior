@@ -2,7 +2,7 @@ coding = 'zeroOne';
 
 % reweighting parameter
 % alpha = 1;
-alpha = 0.5;
+% alpha = 0.5;
 % alpha = 0;
 
 dsRef = @MNIST;
@@ -12,6 +12,10 @@ ntr = 1000;
 nte = [];
 
 classes = 0:9; % classes to be extracted
+
+
+% Class frequencies for train and test sets
+imbClassArr = 10;   % Imbalanced class(es)
 
 % Class frequencies for train and test sets
 

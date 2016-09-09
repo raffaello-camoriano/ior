@@ -4,8 +4,6 @@ confIncremental;
 
 
 %% Experiments setup
-run_bat_rlsc_yesreb = 0;    % Batch RLSC with exact loss rebalancing
-run_inc_rlsc_norec = 0;     % Naive incremental RLSC with no recoding
 run_inc_rlsc_yesrec = 1;    % Incremental RLSC with recoding
 
 trainPart = 0.8;    % Training set part

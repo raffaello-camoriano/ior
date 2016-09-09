@@ -1,15 +1,15 @@
 coding = 'zeroOne';
 
-% reweighting parameter
-alpha = 0.5;
 
 dsRef = @iCubWorld28;
 
 dataRoot =  '/home/kammo/Repos/ior/data/caffe_centralcrop_meanimagenet2012/';
 trainFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
-% trainFolder = 'venerdi26';
-% testFolder = 'martedi23';
+% trainFolder = {'lunedi22','martedi23'};
+% trainFolder = {'lunedi22'};
 testFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
+% testFolder = {'lunedi22','martedi23'};
+% testFolder = {'lunedi22'};
 
 
 
@@ -44,11 +44,13 @@ nLow = [];
 % trainClassFreq = [ highFreq * ones(1,27) lowFreq];
 % trainClassFreq = 1/28 * ones(1,28);
 trainClassFreq = [];
-trainClassNum = 100 * ones(1,28);
+% trainClassNum = 350 * ones(1,28);   %% WARNING: only one tested.! don't use freqs
+trainClassNum = [];   %% WARNING: only one tested.! don't use freqs
 
-% ntr = [];
+ntr = [];
 % ntr = 19629;
-ntr = 2800;
+% ntr = 2800;
+% ntr = sum(trainClassNum);
 % ntr = 200;
 nte = []; 
 
