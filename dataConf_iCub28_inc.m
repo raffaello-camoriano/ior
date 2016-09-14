@@ -11,8 +11,15 @@ testFolder = {'lunedi22','martedi23','mercoledi24','venerdi26'};
 % testFolder = {'lunedi22','martedi23'};
 % testFolder = {'lunedi22'};
 
+%% Snapshot settings
 
+snaps = [1, 2, 5, 10, 20, 50, 100, 500];   % Iterations for which batch and incremental 
+% snaps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];   % Iterations for which batch and incremental 
+                                % solutions will be computed and compared
+                                % on the test set in terms of accuracy
+numSnaps = numel(snaps);
 
+%%
 
 classes = 1:28; % classes to be extracted
 % classes = 1:4; % classes to be extracted

@@ -8,14 +8,24 @@ coding = 'zeroOne';
 dsRef = @MNIST;
 
 % ntr = [];
-ntr = 1000;
+ntr = 10000;
 nte = [];
+
+%% Snapshot settings
+
+% snaps = [1, 2, 5, 10, 20, 50, 100, 500];   % Iterations for which batch and incremental 
+snaps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];   % Iterations for which batch and incremental 
+                                % solutions will be computed and compared
+                                % on the test set in terms of accuracy
+numSnaps = numel(snaps);
+
+%%
 
 classes = 0:9; % classes to be extracted
 
 
 % Class frequencies for train and test sets
-imbClassArr = 10;   % Imbalanced class(es)
+imbClassArr = 9;   % Imbalanced class(es)
 
 % Class frequencies for train and test sets
 
@@ -24,7 +34,7 @@ imbClassArr = 10;   % Imbalanced class(es)
 % nLow = 10;
 % nLow = 20;
 % nLow = 50;
-nLow = 100;
+nLow = 1000;
 
 lowFreq = 0.01;
 

@@ -8,8 +8,8 @@ run_bat_rlsc_yesreb = 1;    % Batch RLSC with exact loss rebalancing
 run_inc_rlsc_yesrec = 1;    % Incremental RLSC with recoding
 
 trainPart = 0.8;    % Training set part
-maxiter = 300;      % Maximum number of updates
-numrep = 10;        % Number of repetitions of the experiment
+maxiter = 1000;      % Maximum number of updates
+numrep = 5;        % Number of repetitions of the experiment
 
 saveResult = 1;
 
@@ -35,7 +35,7 @@ lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
 %% Snapshot settings
 
-snaps = [1, 2, 5, 10, 20, 50, 100];   % Iterations for which batch and incremental 
+snaps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];   % Iterations for which batch and incremental 
                                 % solutions will be computed and compared
                                 % on the test set in terms of accuracy
 numSnaps = numel(snaps);
@@ -400,19 +400,26 @@ for c = imbClassArr
 
     else
 
-        % Overall Test Accuracy
+        %% Overall Test Accuracy
         
-        m_bat_tot_acc = mean(squeeze(results_bat.bestValAccBuf(:,c,:)),1);
-        s_bat_tot_acc = std(squeeze(results_bat.bestValAccBuf(:,c,:)),[],1);
         
-        m_rec_tot_acc = mean(squeeze(results(3).bestValAccBuf(:,c,:)),1);
-        s_rec_tot_acc = std(squeeze(results(3).bestValAccBuf(:,c,:)),[],1);
+        c1 = squeeze(results_bat.bestValAccBuf(:,c,:));
+        c2 = squeeze(results(3).bestValAccBuf(:,c,:));
+        c3 = squeeze(results(1).bestValAccBuf(:,c,:));
         
-        m_nai_tot_acc = mean(squeeze(results(1).bestValAccBuf(:,c,:)),1);
-        s_nai_tot_acc = std(squeeze(results(1).bestValAccBuf(:,c,:)),[],1);
+        m_bat_tot_acc = mean(c1,1);
+        s_bat_tot_acc = std(c1,[],1);
+        
+        m_rec_tot_acc = mean(c2,1);
+        s_rec_tot_acc = std(c2,[],1);
+        
+        m_nai_tot_acc = mean(c3,1);
+        s_nai_tot_acc = std(c3,[],1);
         
         figure
         hold on
+        box on
+        grid on
         errorbar(snaps, ...
                 m_bat_tot_acc,...
                 s_bat_tot_acc);
@@ -428,27 +435,63 @@ for c = imbClassArr
         ylabel('Overall Test Accuracy')
 
         
-        % Imbalanced Test Accuracy
+        % Delta plots
+        
+        % Delta batch rebalancing
+        d_bat_nai = c1 - c3;
 
+        m_bat_nai_tot_del = mean(d_bat_nai,1);
+        s_bat_nai_tot_del = std(d_bat_nai,[],1);
+             
+        % Delta incremental recoding
+        d_rec_nai = c2 - c3;
+
+        m_rec_nai_tot_del = mean(d_rec_nai,1);
+        s_rec_nai_tot_del = std(d_rec_nai,[],1);
+        
         figure
         hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_nai_tot_del ,...
+                s_bat_nai_tot_del );
+        errorbar(snaps, ...
+                m_rec_nai_tot_del,...
+                s_rec_nai_tot_del);
+        hold off        
+        legend('Batch - Naive','Recoding - Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Overall Test Accuracy \Delta')
+        
+        
+        %%% Imbalanced Test Accuracy
+        
+        c1 = squeeze(results_bat.bestCMBuf(:,c,:, c, c));
+        c2 = squeeze(results(3).bestCMBuf(:,c,:, c, c));
+        c3 = squeeze(results(1).bestCMBuf(:,c,:, c, c));
+        
+        figure
+        hold on
+        box on
+        grid on
 
-        m_bat_imb_acc = mean(squeeze(results_bat.bestCMBuf(:,c,:, c, c)),1);
-        s_bat_imb_acc = std(squeeze(results_bat.bestCMBuf(:,c,:, c, c)),[],1);
+        m_bat_imb_acc = mean(c1,1);
+        s_bat_imb_acc = std(c1,[],1);
         
         errorbar(snaps, ...
                 m_bat_imb_acc,...
                 s_bat_imb_acc);
         
 
-        m_rec_imb_acc = mean(squeeze(results(3).bestCMBuf(:,c,:, c, c)),1);
-        s_rec_imb_acc = std(squeeze(results(3).bestCMBuf(:,c,:, c, c)),[],1);
+        m_rec_imb_acc = mean(c2,1);
+        s_rec_imb_acc = std(c2,[],1);
         errorbar(snaps, ...
                 m_rec_imb_acc ,...
                 s_rec_imb_acc);
             
-        m_nai_imb_acc = mean(squeeze(results(1).bestCMBuf(:,c,:, c, c)),1);
-        s_nai_imb_acc = std(squeeze(results(1).bestCMBuf(:,c,:, c, c)),[],1);
+        m_nai_imb_acc = mean(c3,1);
+        s_nai_imb_acc = std(c3,[],1);
         errorbar(snaps, ...
                 m_nai_imb_acc ,...
                 s_nai_imb_acc);
@@ -459,8 +502,38 @@ for c = imbClassArr
         xlabel('n_{imb}')
         ylabel('Imbalanced Test Accuracy')
         
+        % Delta plots
+        
+        % Delta batch rebalancing
+        d_bat_nai = c1 - c3;
 
-        % Balanced Test Accuracy
+        m_bat_nai_imb_del = mean(d_bat_nai,1);
+        s_bat_nai_imb_del = std(d_bat_nai,[],1);
+             
+        % Delta incremental recoding
+        d_rec_nai = c2 - c3;
+
+        m_rec_nai_imb_del = mean(d_rec_nai,1);
+        s_rec_nai_imb_del = std(d_rec_nai,[],1);
+        
+        figure
+        hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_nai_imb_del ,...
+                s_bat_nai_imb_del );
+        errorbar(snaps, ...
+                m_rec_nai_imb_del,...
+                s_rec_nai_imb_del);
+        hold off        
+        legend('Rebalancing vs. Naive','Recoding vs. Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Imb. Test \Delta Acc.')
+        set(gca,'xscale','log')
+        
+        
+        %%% Balanced Test Accuracy
 
         a1 = squeeze(results_bat.bestValAccBuf(:,c,:));
         b1 = squeeze(results_bat.bestCMBuf(:,c,:, c, c));
@@ -476,6 +549,8 @@ for c = imbClassArr
 
         figure
         hold on
+        box on
+        grid on
 
         m_bat_bal_acc = mean(c1,1);
         s_bat_bal_acc = std(c1,[],1);
@@ -484,7 +559,6 @@ for c = imbClassArr
                 m_bat_bal_acc ,...
                 s_bat_bal_acc );
         
-
         m_rec_bal_acc = mean(c2,1);
         s_rec_bal_acc = std(c2,[],1);
         errorbar(snaps, ...
@@ -501,45 +575,216 @@ for c = imbClassArr
         hold off        
         legend('Batch Loss Rebalancing','Incremental Recoding', 'Incremental Naive', 'Location', 'southeast');
         xlabel('n_{imb}')
-        ylabel('Balanced Test Accuracy')        
-    end    
+        ylabel('Balanced Test Accuracy')
+        
+        
+        % Delta plots
+        
+        % Delta batch rebalancing
+        d_bat_nai = c1 - c3;
+
+        m_bat_nai_bal_del = mean(d_bat_nai,1);
+        s_bat_nai_bal_del = std(d_bat_nai,[],1);
+             
+        % Delta incremental recoding
+        d_rec_nai = c2 - c3;
+
+        m_rec_nai_bal_del = mean(d_rec_nai,1);
+        s_rec_nai_bal_del = std(d_rec_nai,[],1);
+        
+        figure
+        hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_nai_bal_del ,...
+                s_bat_nai_bal_del );
+        errorbar(snaps, ...
+                m_rec_nai_bal_del,...
+                s_rec_nai_bal_del);
+        hold off        
+        legend('Rebalancing vs. Naive','Recoding vs. Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Balanced Test Accuracy \Delta')
+        set(gca,'xscale','log')
+        
+    end
 end
 
 %% Print ICRA results 
 
+%% Total Test Accuracy Table
 
 display(' ');
-display('Overall Test Accuracy Table');
+% display('Overall Test Accuracy Table');
 display(' ');
-n_imb = snaps';
-incremental_naive = cellstr([num2str(m_nai_tot_acc') , repmat(' +- ',numSnaps,1) , num2str(s_nai_tot_acc')]);
-incremental_recoding = cellstr([num2str(m_rec_tot_acc') , repmat(' +- ',numSnaps,1) , num2str(s_rec_tot_acc')]);
-batch_rebalancing = cellstr([num2str(m_bat_tot_acc') , repmat(' +- ',numSnaps,1) , num2str(m_bat_tot_acc')]);
-
-% Create a table, |T|, as a container for the workspace variables. 
-T_tot = table(n_imb,incremental_naive,incremental_recoding,batch_rebalancing)
-
-display(' ');
-display('Balanced Test Accuracy Table');
-display(' ');
-n_imb = snaps';
-incremental_naive = cellstr([num2str(m_nai_bal_acc') , repmat(' +- ',numSnaps,1) , num2str(s_nai_bal_acc')]);
-incremental_recoding = cellstr([num2str(m_rec_bal_acc') , repmat(' +- ',numSnaps,1) , num2str(s_rec_bal_acc')]);
-batch_rebalancing = cellstr([num2str(m_bat_bal_acc') , repmat(' +- ',numSnaps,1) , num2str(m_bat_bal_acc')]);
+n_imb = cellstr(num2str(snaps'));
+incremental_naive = cellstr([num2str(round(m_nai_tot_acc',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_nai_tot_acc',3))]);
+incremental_recoding = cellstr([num2str(round(m_rec_tot_acc',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_rec_tot_acc',3))]);
+batch_rebalancing = cellstr([num2str(round(m_bat_tot_acc',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_bat_tot_acc'),3)]);
 
 % Create a table, |T|, as a container for the workspace variables. 
-T_bal = table(n_imb,incremental_naive,incremental_recoding,batch_rebalancing)
+T_tot = table(n_imb,incremental_naive,incremental_recoding,batch_rebalancing);
+T_tot.Properties.VariableNames{'n_imb'} = 'nImb';
+T_tot.Properties.VariableNames{'incremental_naive'} = 'IncrementalNaive';
+T_tot.Properties.VariableNames{'incremental_recoding'} = 'IncrementalRecoding';
+T_tot.Properties.VariableNames{'batch_rebalancing'} = 'BatchRebalancing';
+
+% Now use this table as input in our input struct:
+input.data = T_tot;
+input.dataFormat = {'%s'};
+input.tableColumnAlignment = 'c';
+input.tableBorders = 0;
+input.makeCompleteLatexDocument = 0;
+input.tableCaption = [ datasetName , ' Overall Test Accuracy Table'];
+
+% Now call the function to generate LaTex code:
+latex_tot = latexTable(input);
+
+
+
+%%% Balanced Test Accuracy Table
 
 display(' ');
-display('Imbalanced Test Accuracy Table');
+% display('Balanced Test Accuracy Table');
 display(' ');
-n_imb = snaps';
-incremental_naive = cellstr([num2str(m_nai_imb_acc') , repmat(' +- ',numSnaps,1) , num2str(s_nai_imb_acc')]);
-incremental_recoding = cellstr([num2str(m_rec_imb_acc') , repmat(' +- ',numSnaps,1) , num2str(s_rec_imb_acc')]);
-batch_rebalancing = cellstr([num2str(m_bat_imb_acc') , repmat(' +- ',numSnaps,1) , num2str(m_bat_imb_acc')]);
+n_imb = cellstr(num2str(snaps'));
+incremental_naive = cellstr([num2str(round(m_nai_bal_acc',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_nai_bal_acc',3))]);
+incremental_recoding = cellstr([num2str(round(m_rec_bal_acc',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_rec_bal_acc',3))]);
+batch_rebalancing = cellstr([num2str(round(m_bat_bal_acc',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_bat_bal_acc',3))]);
 
 % Create a table, |T|, as a container for the workspace variables. 
-T_imb = table(n_imb,incremental_naive,incremental_recoding,batch_rebalancing)
+T_bal = table(n_imb,incremental_naive,incremental_recoding,batch_rebalancing);
+T_bal.Properties.VariableNames{'n_imb'} = 'nImb';
+T_bal.Properties.VariableNames{'incremental_naive'} = 'IncrementalNaive';
+T_bal.Properties.VariableNames{'incremental_recoding'} = 'IncrementalRecoding';
+T_bal.Properties.VariableNames{'batch_rebalancing'} = 'BatchRebalancing';
+
+% Now use this table as input in our input struct:
+input.data = T_bal;
+input.dataFormat = {'%s'};
+input.tableColumnAlignment = 'c';
+input.tableBorders = 0;
+input.makeCompleteLatexDocument = 0;
+input.tableCaption = [ datasetName , ' Balanced Test Accuracy Table'];
+
+% Now call the function to generate LaTex code:
+latex_bal = latexTable(input);
+
+
+
+%%% Imbalanced Test Accuracy Table
+
+display(' ');
+% display('Imbalanced Test Accuracy Table');
+display(' ');
+n_imb = cellstr(num2str(snaps'));
+incremental_naive = cellstr([num2str(round(m_nai_imb_acc',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_nai_imb_acc',3))]);
+incremental_recoding = cellstr([num2str(round(m_rec_imb_acc',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_rec_imb_acc',3))]);
+batch_rebalancing = cellstr([num2str(round(m_bat_imb_acc',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_bat_imb_acc',3))]);
+
+% Create a table, |T|, as a container for the workspace variables. 
+T_imb = table(n_imb,incremental_naive,incremental_recoding,batch_rebalancing);
+T_imb.Properties.VariableNames{'n_imb'} = 'nImb';
+T_imb.Properties.VariableNames{'incremental_naive'} = 'IncrementalNaive';
+T_imb.Properties.VariableNames{'incremental_recoding'} = 'IncrementalRecoding';
+T_imb.Properties.VariableNames{'batch_rebalancing'} = 'BatchRebalancing';
+
+% Now use this table as input in our input struct:
+input.data = T_imb;
+input.dataFormat = {'%s'};
+input.tableColumnAlignment = 'c';
+input.tableBorders = 0;
+input.makeCompleteLatexDocument = 0;
+input.tableCaption = [ datasetName , ' Imbalanced Test Accuracy Table'];
+
+% Now call the function to generate LaTex code:
+latex_imb = latexTable(input);
+
+
+%% Total Test Accuracy Delta Table
+
+display(' ');
+% display('Overall Test Accuracy Table');
+display(' ');
+n_imb = cellstr(num2str(snaps'));
+rebalancing_vs_naive = cellstr([num2str(round(m_bat_nai_tot_del',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_bat_nai_tot_del',3))]);
+incremental_vs_naive = cellstr([num2str(round(m_rec_nai_tot_del',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_rec_nai_tot_del',3))]);
+
+% Create a table, |T|, as a container for the workspace variables. 
+T_tot_delta = table(n_imb,rebalancing_vs_naive,incremental_vs_naive);
+T_tot_delta.Properties.VariableNames{'n_imb'} = 'nImb';
+T_tot_delta.Properties.VariableNames{'rebalancing_vs_naive'} = 'RebalancingVsNaive';
+T_tot_delta.Properties.VariableNames{'incremental_vs_naive'} = 'IncrementalVsNaive';
+
+% Now use this table as input in our input struct:
+input.data = T_tot_delta;
+input.dataFormat = {'%s'};
+input.tableColumnAlignment = 'c';
+input.tableBorders = 0;
+input.makeCompleteLatexDocument = 0;
+input.tableCaption = [ datasetName , ' Overall Test Accuracy Delta Table'];
+
+% Now call the function to generate LaTex code:
+latex_tot_delta = latexTable(input);
+
+
+
+%%% Balanced Test Accuracy Table
+
+
+display(' ');
+% display('Overall Test Accuracy Delta Table');
+display(' ');
+n_imb = cellstr(num2str(snaps'));
+rebalancing_vs_naive = cellstr([num2str(round(m_bat_nai_bal_del',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_bat_nai_bal_del',3))]);
+incremental_vs_naive = cellstr([num2str(round(m_rec_nai_bal_del',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_rec_nai_bal_del',3))]);
+
+% Create a table, |T|, as a container for the workspace variables. 
+T_bal_delta = table(n_imb,rebalancing_vs_naive,incremental_vs_naive);
+T_bal_delta.Properties.VariableNames{'n_imb'} = 'nImb';
+T_bal_delta.Properties.VariableNames{'rebalancing_vs_naive'} = 'RebalancingVsNaive';
+T_bal_delta.Properties.VariableNames{'incremental_vs_naive'} = 'IncrementalVsNaive';
+
+% Now use this table as input in our input struct:
+input.data = T_bal_delta;
+input.dataFormat = {'%s'};
+input.tableColumnAlignment = 'c';
+input.tableBorders = 0;
+input.makeCompleteLatexDocument = 0;
+input.tableCaption = [ datasetName , ' Balanced Test Accuracy Delta Table'];
+
+% Now call the function to generate LaTex code:
+latex_bal_delta = latexTable(input);
+
+
+%%% Imbalanced Test Accuracy Delta Table
+
+
+
+display(' ');
+% display('Imbalanced Test Accuracy Table');
+display(' ');
+n_imb = cellstr(num2str(snaps'));
+rebalancing_vs_naive = cellstr([num2str(round(m_bat_nai_imb_del',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_bat_nai_imb_del',3))]);
+incremental_vs_naive = cellstr([num2str(round(m_rec_nai_imb_del',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_rec_nai_imb_del',3))]);
+
+% Create a table, |T|, as a container for the workspace variables. 
+T_imb_delta = table(n_imb,rebalancing_vs_naive,incremental_vs_naive);
+T_imb_delta.Properties.VariableNames{'n_imb'} = 'nImb';
+T_imb_delta.Properties.VariableNames{'rebalancing_vs_naive'} = 'RebalancingVsNaive';
+T_imb_delta.Properties.VariableNames{'incremental_vs_naive'} = 'IncrementalVsNaive';
+
+% Now use this table as input in our input struct:
+input.data = T_imb_delta;
+input.dataFormat = {'%s'};
+input.tableColumnAlignment = 'c';
+input.tableBorders = 0;
+input.makeCompleteLatexDocument = 0;
+input.tableCaption = [ datasetName , ' Imbalanced Test Accuracy Delta Table'];
+
+% Now call the function to generate LaTex code:
+latex_imb_delta = latexTable(input);
 
 %% Save figures
 
