@@ -14,7 +14,7 @@ nte = [];
 %% Snapshot settings
 
 % snaps = [1, 2, 5, 10, 20, 50, 100, 500];   % Iterations for which batch and incremental 
-snaps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];   % Iterations for which batch and incremental 
+snaps = [1, 2, 5, 10, 20, 50, 100, 200, 500];   % Iterations for which batch and incremental 
                                 % solutions will be computed and compared
                                 % on the test set in terms of accuracy
 numSnaps = numel(snaps);

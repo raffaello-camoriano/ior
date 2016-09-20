@@ -10,7 +10,7 @@ computeTestAcc = 1;     % flag for test accuracy computation
 
 trainPart = 0.8;    % Training set part
 maxiter = 1000;     % Maximum number of updates
-numrep = 2;         % Number of repetitions of the experiment
+numrep = 10;         % Number of repetitions of the experiment
 
 saveResult = 1;
 
@@ -38,10 +38,11 @@ lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
 %% Alpha setting (only for recoding)
 
-alphaArr = linspace(0,1,5);
+% alphaArr = linspace(0,1,5);
+alphaArr = [0 0.7];
 numAlpha = numel(alphaArr);
 resultsArr = struct();
-
+recod_alpha_idx  = 2;
 
 %% Instantiate storage structures
 
@@ -460,7 +461,7 @@ for k = 1:numrep
                 end
                 
                 % Compute test accuracy
-                if computeTestAcc == 1
+                if (computeTestAcc == 1) && (sIdx <= numel(snaps)) && (q == snaps(sIdx))
                     for kk = 1:numAlpha
 
                         % Predict validation labels
@@ -474,7 +475,7 @@ for k = 1:numrep
                         else
                             CM = confusionmat(Yte,sign(Ytepred_raw));
                             CM = CM ./ repmat(sum(CM,2),1,2);
-                            teAcc = trace(CM)/2;                
+                            teAcc = trace(CM)/2;
                         end        
 
                         results(kk).testAccBuf(k,imbClass,sIdx) = teAcc;
@@ -483,10 +484,9 @@ for k = 1:numrep
                 end
                 
                 % update snapshot index
-                if (sIdx <= numel(snaps)) && (q == snaps(sIdx))
+                if (sIdx < numel(snaps)) && (q == snaps(sIdx))
                     sIdx = sIdx + 1;
                 end
-                
             end
         end
     end
@@ -507,211 +507,216 @@ for c = imbClassArr
         %% Overall Validation Accuracy
         
 %         
-%         c1 = squeeze(results_bat.bestValAccBuf(:,c,:));
-%         c2 = squeeze(results(3).bestValAccBuf(:,c,:));
-%         c3 = squeeze(results(1).bestValAccBuf(:,c,:));
+        c1 = squeeze(results_bat.bestValAccBuf(:,c,:));
+        c2 = squeeze(results(recod_alpha_idx).bestValAccBuf(:,c,:));
+        c3 = squeeze(results(1).bestValAccBuf(:,c,:));
+        
+        m_bat_tot_acc = mean(c1,1);
+        s_bat_tot_acc = std(c1,[],1);
+        
+        m_rec_tot_acc = mean(c2,1);
+        s_rec_tot_acc = std(c2,[],1);
+        
+        m_nai_tot_acc = mean(c3,1);
+        s_nai_tot_acc = std(c3,[],1);
+        
+        figure
+        hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_tot_acc,...
+                s_bat_tot_acc);
+        errorbar(snaps, ...
+                m_rec_tot_acc,...
+                s_rec_tot_acc);
+        errorbar(snaps, ...
+                m_nai_tot_acc,...
+                s_nai_tot_acc);
+        hold off        
+        legend('Batch loss Rebalancing','Incremental Recoding', 'Incremental Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Overall Validation Accuracy')
+
+        
+        % Delta plots
+        
+        % Delta batch rebalancing
+        d_bat_nai = c1 - c3;
+
+        m_bat_nai_tot_del = mean(d_bat_nai,1);
+        s_bat_nai_tot_del = std(d_bat_nai,[],1);
+             
+        % Delta incremental recoding
+        d_rec_nai = c2 - c3;
+
+        m_rec_nai_tot_del = mean(d_rec_nai,1);
+        s_rec_nai_tot_del = std(d_rec_nai,[],1);
+        
+        figure
+        hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_nai_tot_del ,...
+                s_bat_nai_tot_del );
+        errorbar(snaps, ...
+                m_rec_nai_tot_del,...
+                s_rec_nai_tot_del);
+        hold off        
+        legend('Batch - Naive','Recoding - Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Overall Validation Accuracy \Delta')
+        
 %         
-%         m_bat_tot_acc = mean(c1,1);
-%         s_bat_tot_acc = std(c1,[],1);
-%         
-%         m_rec_tot_acc = mean(c2,1);
-%         s_rec_tot_acc = std(c2,[],1);
-%         
-%         m_nai_tot_acc = mean(c3,1);
-%         s_nai_tot_acc = std(c3,[],1);
-%         
-% %         figure
-% %         hold on
-% %         box on
-% %         grid on
-% %         errorbar(snaps, ...
-% %                 m_bat_tot_acc,...
-% %                 s_bat_tot_acc);
-% %         errorbar(snaps, ...
-% %                 m_rec_tot_acc,...
-% %                 s_rec_tot_acc);
-% %         errorbar(snaps, ...
-% %                 m_nai_tot_acc,...
-% %                 s_nai_tot_acc);
-% %         hold off        
-% %         legend('Batch loss Rebalancing','Incremental Recoding', 'Incremental Naive', 'Location', 'southeast');
-% %         xlabel('n_{imb}')
-% %         ylabel('Overall Validation Accuracy')
-% 
-%         
-%         % Delta plots
-%         
-%         % Delta batch rebalancing
-%         d_bat_nai = c1 - c3;
-% 
-%         m_bat_nai_tot_del = mean(d_bat_nai,1);
-%         s_bat_nai_tot_del = std(d_bat_nai,[],1);
-%              
-%         % Delta incremental recoding
-%         d_rec_nai = c2 - c3;
-% 
-%         m_rec_nai_tot_del = mean(d_rec_nai,1);
-%         s_rec_nai_tot_del = std(d_rec_nai,[],1);
-%         
-% %         figure
-% %         hold on
-% %         box on
-% %         grid on
-% %         errorbar(snaps, ...
-% %                 m_bat_nai_tot_del ,...
-% %                 s_bat_nai_tot_del );
-% %         errorbar(snaps, ...
-% %                 m_rec_nai_tot_del,...
-% %                 s_rec_nai_tot_del);
-% %         hold off        
-% %         legend('Batch - Naive','Recoding - Naive', 'Location', 'southeast');
-% %         xlabel('n_{imb}')
-% %         ylabel('Overall Validation Accuracy \Delta')
-%         
-%         
-%         %%% Imbalanced Validation Accuracy
-%         
-%         c1 = squeeze(results_bat.bestCMBuf(:,c,:, c, c));
-%         c2 = squeeze(results(3).bestCMBuf(:,c,:, c, c));
-%         c3 = squeeze(results(1).bestCMBuf(:,c,:, c, c));
-%         
-%         figure
-%         hold on
-%         box on
-%         grid on
-% 
-%         m_bat_imb_acc = mean(c1,1);
-%         s_bat_imb_acc = std(c1,[],1);
-%         
-%         errorbar(snaps, ...
-%                 m_bat_imb_acc,...
-%                 s_bat_imb_acc);
-%         
-% 
-%         m_rec_imb_acc = mean(c2,1);
-%         s_rec_imb_acc = std(c2,[],1);
-%         errorbar(snaps, ...
-%                 m_rec_imb_acc ,...
-%                 s_rec_imb_acc);
-%             
-%         m_nai_imb_acc = mean(c3,1);
-%         s_nai_imb_acc = std(c3,[],1);
-%         errorbar(snaps, ...
-%                 m_nai_imb_acc ,...
-%                 s_nai_imb_acc);
-%             
-%             
-%         hold off        
-%         legend('Batch loss Rebalancing','Incremental Recoding', 'Incremental Naive', 'Location', 'southeast');
-%         xlabel('n_{imb}')
-%         ylabel('Imbalanced Validation Accuracy')
-%         
-%         % Delta plots
-%         
-%         % Delta batch rebalancing
-%         d_bat_nai = c1 - c3;
-% 
-%         m_bat_nai_imb_del = mean(d_bat_nai,1);
-%         s_bat_nai_imb_del = std(d_bat_nai,[],1);
-%              
-%         % Delta incremental recoding
-%         d_rec_nai = c2 - c3;
-% 
-%         m_rec_nai_imb_del = mean(d_rec_nai,1);
-%         s_rec_nai_imb_del = std(d_rec_nai,[],1);
-%         
-%         figure
-%         hold on
-%         box on
-%         grid on
-%         errorbar(snaps, ...
-%                 m_bat_nai_imb_del ,...
-%                 s_bat_nai_imb_del );
-%         errorbar(snaps, ...
-%                 m_rec_nai_imb_del,...
-%                 s_rec_nai_imb_del);
-%         hold off        
-%         legend('Rebalancing vs. Naive','Recoding vs. Naive', 'Location', 'southeast');
-%         xlabel('n_{imb}')
-%         ylabel('Imb. Validation \Delta Acc.')
-%         set(gca,'xscale','log')
-%         
-%         
+        %%% Imbalanced Validation Accuracy
+        
+        c1 = squeeze(results_bat.bestCMBuf(:,c,:, c, c));
+        c2 = squeeze(results(recod_alpha_idx).bestCMBuf(:,c,:, c, c));
+        c3 = squeeze(results(1).bestCMBuf(:,c,:, c, c));
+        
+
+
+        m_bat_imb_acc = mean(c1,1);
+        s_bat_imb_acc = std(c1,[],1);
+        
+        
+        m_rec_imb_acc = mean(c2,1);
+        s_rec_imb_acc = std(c2,[],1);
+        
+            
+        m_nai_imb_acc = mean(c3,1);
+        s_nai_imb_acc = std(c3,[],1);
+        
+        figure
+        hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_imb_acc,...
+                s_bat_imb_acc);
+        errorbar(snaps, ...
+                m_rec_imb_acc ,...
+                s_rec_imb_acc);
+        errorbar(snaps, ...
+                m_nai_imb_acc ,...
+                s_nai_imb_acc);
+            
+            
+        hold off        
+        legend('Batch loss Rebalancing','Incremental Recoding', 'Incremental Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Imbalanced Validation Accuracy')
+        
+        % Delta plots
+        
+        % Delta batch rebalancing
+        d_bat_nai = c1 - c3;
+
+        m_bat_nai_imb_del = mean(d_bat_nai,1);
+        s_bat_nai_imb_del = std(d_bat_nai,[],1);
+             
+        % Delta incremental recoding
+        d_rec_nai = c2 - c3;
+
+        m_rec_nai_imb_del = mean(d_rec_nai,1);
+        s_rec_nai_imb_del = std(d_rec_nai,[],1);
+        
+        figure
+        hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_nai_imb_del ,...
+                s_bat_nai_imb_del );
+        errorbar(snaps, ...
+                m_rec_nai_imb_del,...
+                s_rec_nai_imb_del);
+        hold off        
+        legend('Rebalancing vs. Naive','Recoding vs. Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Imb. Validation \Delta Acc.')
+        set(gca,'xscale','log')
+        
+        
 %         %%% Balanced Validation Accuracy
 % 
-%         a1 = squeeze(results_bat.bestValAccBuf(:,c,:));
-%         b1 = squeeze(results_bat.bestCMBuf(:,c,:, c, c));
-%         c1 = (t*a1 - b1) / (t-1);
-% 
-%         a2 = squeeze(results(3).bestValAccBuf(:,c,:));
-%         b2 = squeeze(results(3).bestCMBuf(:,c,:, c, c));
-%         c2 = (t*a2 - b2) / (t-1);
-% 
-%         a3 = squeeze(results(1).bestValAccBuf(:,c,:));
-%         b3 = squeeze(results(1).bestCMBuf(:,c,:, c, c));
-%         c3 = (t*a3 - b3) / (t-1);
-% 
-%         figure
-%         hold on
-%         box on
-%         grid on
-% 
-%         m_bat_bal_acc = mean(c1,1);
-%         s_bat_bal_acc = std(c1,[],1);
+        a1 = squeeze(results_bat.bestValAccBuf(:,c,:));
+        b1 = squeeze(results_bat.bestCMBuf(:,c,:, c, c));
+        c1 = (t*a1 - b1) / (t-1);
+
+        a2 = squeeze(results(recod_alpha_idx).bestValAccBuf(:,c,:));
+        b2 = squeeze(results(recod_alpha_idx).bestCMBuf(:,c,:, c, c));
+        c2 = (t*a2 - b2) / (t-1);
+
+        a3 = squeeze(results(1).bestValAccBuf(:,c,:));
+        b3 = squeeze(results(1).bestCMBuf(:,c,:, c, c));
+        c3 = (t*a3 - b3) / (t-1);
+
+        m_bat_bal_acc = mean(c1,1);
+        s_bat_bal_acc = std(c1,[],1); 
 %         
-%         errorbar(snaps, ...
-%                 m_bat_bal_acc ,...
-%                 s_bat_bal_acc );
-%         
-%         m_rec_bal_acc = mean(c2,1);
-%         s_rec_bal_acc = std(c2,[],1);
-%         errorbar(snaps, ...
-%                 m_rec_bal_acc,...
-%                 s_rec_bal_acc);
+        m_rec_bal_acc = mean(c2,1);
+        s_rec_bal_acc = std(c2,[],1);  
 %             
-%         m_nai_bal_acc = mean(c3,1);
-%         s_nai_bal_acc = std(c3,[],1);
-%         errorbar(snaps, ...
-%                 m_nai_bal_acc,...
-%                 s_nai_bal_acc);
-%             
-%             
-%         hold off        
-%         legend('Batch Loss Rebalancing','Incremental Recoding', 'Incremental Naive', 'Location', 'southeast');
-%         xlabel('n_{imb}')
-%         ylabel('Balanced Validation Accuracy')
+        m_nai_bal_acc = mean(c3,1);
+        s_nai_bal_acc = std(c3,[],1);     
+        
+        
+        figure
+        hold on
+        box on
+        grid on
+
+
+        
+        errorbar(snaps, ...
+                m_bat_bal_acc ,...
+                s_bat_bal_acc );
+        errorbar(snaps, ...
+                m_rec_bal_acc,...
+                s_rec_bal_acc);
+        errorbar(snaps, ...
+                m_nai_bal_acc,...
+                s_nai_bal_acc);
+            
+            
+        hold off        
+        legend('Batch Loss Rebalancing','Incremental Recoding', 'Incremental Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Balanced Validation Accuracy')
+        
+        
+        % Delta plots
+        
+        % Delta batch rebalancing
+        d_bat_nai = c1 - c3;
+
+        m_bat_nai_bal_del = mean(d_bat_nai,1);
+        s_bat_nai_bal_del = std(d_bat_nai,[],1);
+             
+        % Delta incremental recoding
+        d_rec_nai = c2 - c3;
+
+        m_rec_nai_bal_del = mean(d_rec_nai,1);
+        s_rec_nai_bal_del = std(d_rec_nai,[],1);
 %         
-%         
-%         % Delta plots
-%         
-%         % Delta batch rebalancing
-%         d_bat_nai = c1 - c3;
-% 
-%         m_bat_nai_bal_del = mean(d_bat_nai,1);
-%         s_bat_nai_bal_del = std(d_bat_nai,[],1);
-%              
-%         % Delta incremental recoding
-%         d_rec_nai = c2 - c3;
-% 
-%         m_rec_nai_bal_del = mean(d_rec_nai,1);
-%         s_rec_nai_bal_del = std(d_rec_nai,[],1);
-%         
-%         figure
-%         hold on
-%         box on
-%         grid on
-%         errorbar(snaps, ...
-%                 m_bat_nai_bal_del ,...
-%                 s_bat_nai_bal_del );
-%         errorbar(snaps, ...
-%                 m_rec_nai_bal_del,...
-%                 s_rec_nai_bal_del);
-%         hold off        
-%         legend('Rebalancing vs. Naive','Recoding vs. Naive', 'Location', 'southeast');
-%         xlabel('n_{imb}')
-%         ylabel('Balanced Validation Accuracy \Delta')
-%         set(gca,'xscale','log')
-%         
+        figure
+        hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_nai_bal_del ,...
+                s_bat_nai_bal_del );
+        errorbar(snaps, ...
+                m_rec_nai_bal_del,...
+                s_rec_nai_bal_del);
+        hold off        
+        legend('Rebalancing vs. Naive','Recoding vs. Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Balanced Validation Accuracy \Delta')
+        set(gca,'xscale','log')
+        
     end
     
     % Test error comparison plots
@@ -724,7 +729,7 @@ for c = imbClassArr
         
         
         c1 = squeeze(results_bat.testAccBuf(:,c,:));
-        c2 = squeeze(results(3).testAccBuf(:,c,:));
+        c2 = squeeze(results(recod_alpha_idx).testAccBuf(:,c,:));
         c3 = squeeze(results(1).testAccBuf(:,c,:));
         
         m_bat_tot_acc_te = mean(c1,1);
@@ -736,23 +741,23 @@ for c = imbClassArr
         m_nai_tot_acc_te = mean(c3,1);
         s_nai_tot_acc_te = std(c3,[],1);
         
-%         figure
-%         hold on
-%         box on
-%         grid on
-%         errorbar(snaps, ...
-%                 m_bat_tot_acc,...
-%                 s_bat_tot_acc);
-%         errorbar(snaps, ...
-%                 m_rec_tot_acc,...
-%                 s_rec_tot_acc);
-%         errorbar(snaps, ...
-%                 m_nai_tot_acc,...
-%                 s_nai_tot_acc);
-%         hold off        
-%         legend('Batch loss Rebalancing','Incremental Recoding', 'Incremental Naive', 'Location', 'southeast');
-%         xlabel('n_{imb}')
-%         ylabel('Overall Test Accuracy')
+        figure
+        hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_tot_acc,...
+                s_bat_tot_acc);
+        errorbar(snaps, ...
+                m_rec_tot_acc,...
+                s_rec_tot_acc);
+        errorbar(snaps, ...
+                m_nai_tot_acc,...
+                s_nai_tot_acc);
+        hold off        
+        legend('Batch loss Rebalancing','Incremental Recoding', 'Incremental Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Overall Test Accuracy')
 
         
         % Delta plots
@@ -769,26 +774,26 @@ for c = imbClassArr
         m_rec_nai_tot_del_te = mean(d_rec_nai_te,1);
         s_rec_nai_tot_del_te = std(d_rec_nai_te,[],1);
         
-%         figure
-%         hold on
-%         box on
-%         grid on
-%         errorbar(snaps, ...
-%                 m_bat_nai_tot_del ,...
-%                 s_bat_nai_tot_del );
-%         errorbar(snaps, ...
-%                 m_rec_nai_tot_del,...
-%                 s_rec_nai_tot_del);
-%         hold off        
-%         legend('Batch - Naive','Recoding - Naive', 'Location', 'southeast');
-%         xlabel('n_{imb}')
-%         ylabel('Overall Test Accuracy \Delta')
+        figure
+        hold on
+        box on
+        grid on
+        errorbar(snaps, ...
+                m_bat_nai_tot_del ,...
+                s_bat_nai_tot_del );
+        errorbar(snaps, ...
+                m_rec_nai_tot_del,...
+                s_rec_nai_tot_del);
+        hold off        
+        legend('Batch - Naive','Recoding - Naive', 'Location', 'southeast');
+        xlabel('n_{imb}')
+        ylabel('Overall Test Accuracy \Delta')
         
         
         %%% Imbalanced Test Accuracy
         
         c1 = squeeze(results_bat.testCM(:,c,:, c, c));
-        c2 = squeeze(results(3).testCM(:,c,:, c, c));
+        c2 = squeeze(results(recod_alpha_idx).testCM(:,c,:, c, c));
         c3 = squeeze(results(1).testCM(:,c,:, c, c));
         
         figure
@@ -859,8 +864,8 @@ for c = imbClassArr
         b1 = squeeze(results_bat.testCM(:,c,:, c, c));
         c1 = (t*a1 - b1) / (t-1);
 
-        a2 = squeeze(results(3).testAccBuf(:,c,:));
-        b2 = squeeze(results(3).testCM(:,c,:, c, c));
+        a2 = squeeze(results(recod_alpha_idx).testAccBuf(:,c,:));
+        b2 = squeeze(results(recod_alpha_idx).testCM(:,c,:, c, c));
         c2 = (t*a2 - b2) / (t-1);
 
         a3 = squeeze(results(1).testAccBuf(:,c,:));
@@ -901,7 +906,7 @@ for c = imbClassArr
         % Delta plots
         
         % Delta batch rebalancing
-        d_bat_nai = c1 - c3;
+        d_bat_nai_te = c1 - c3;
 
         m_bat_nai_bal_del_te = mean(d_bat_nai_te,1);
         s_bat_nai_bal_del_te = std(d_bat_nai_te,[],1);
@@ -1117,7 +1122,7 @@ display(' ');
 n_imb = cellstr(num2str(snaps'));
 incremental_naive = cellstr([num2str(round(m_nai_tot_acc_te',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_nai_tot_acc_te',3))]);
 incremental_recoding = cellstr([num2str(round(m_rec_tot_acc_te',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_rec_tot_acc_te',3))]);
-batch_rebalancing = cellstr([num2str(round(m_bat_tot_acc_te',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_bat_tot_acc_te'),3)]);
+batch_rebalancing = cellstr([num2str(round(m_bat_tot_acc_te',3)) , repmat(' $\pm$ ',numSnaps,1) , num2str(round(s_bat_tot_acc_te',3))]);
 
 % Create a table, |T|, as a container for the workspace variables. 
 T_tot = table(n_imb,incremental_naive,incremental_recoding,batch_rebalancing);
