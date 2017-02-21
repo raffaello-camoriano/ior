@@ -101,6 +101,7 @@ for k = 1:numrep
             XYval_dirpath = [ dsDir , '/rgbd/trial' , num2str(k) , '/val/'];
             XYtest_dirpath = [ dsDir , '/rgbd/trial' , num2str(k) , '/test/'];
 
+            
             % Path to registries
             XYtr_regpath = [registries_root , '/cat/' , trialName , '/train_Y.txt'];
             XYval_regpath = [registries_root , '/cat/' , trialName , '/val_Y.txt'];
@@ -504,7 +505,7 @@ for c = imbClassArr
         warning('Plots only for numrep > 1');
     else
 
-        %% Overall Validation Accuracy
+        % Overall Validation Accuracy
         
 %         
         c1 = squeeze(results_bat.bestValAccBuf(:,c,:));
@@ -725,7 +726,7 @@ for c = imbClassArr
         warning('Plots only for numrep > 1');
     else
 
-        %% Overall Test Accuracy
+        % Overall Test Accuracy
         
         
         c1 = squeeze(results_bat.testAccBuf(:,c,:));

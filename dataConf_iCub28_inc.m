@@ -29,7 +29,8 @@ classes = 1:28; % classes to be extracted
 
 
 % Class frequencies for train and test sets
-imbClassArr = 28;   % Imbalanced class(es)
+% imbClassArr = 28;   % Imbalanced class(es)
+imbClassArr = 1:28;   % Imbalanced class(es)
 
 % nLow = 2;
 % nLow = 5;
@@ -75,3 +76,9 @@ testClassNum = [];
 % trainClassFreq = [0.0369*ones(1,27) 0.004];
 % trainClassFreq = [];
 % testClassFreq = [];
+
+%% Snapshot settings
+
+snaps = 1:100;   % Iterations for which incremental 
+                    % solutions will be computed and compared
+                    % on the test set in terms of accuracy

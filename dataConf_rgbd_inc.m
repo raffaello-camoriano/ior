@@ -27,8 +27,8 @@ numSnaps = numel(snaps);
 %%
 classes = 1:51;
 
-% imbClassArr = 51;   % Imbalanced class(es)
-imbClassArr = 48;   % Imbalanced class(es): tomato
+% imbClassArr = 48;   % Imbalanced class(es): tomato
+imbClassArr = 1:51;   % Imbalanced class(es): tomato
 
 ntr = [];
 nte = []; 
@@ -47,3 +47,9 @@ nte = [];
 % trainClassFreq = [0.0369*ones(1,27) 0.004];
 % trainClassFreq = [];
 % testClassFreq = [];
+
+%% Snapshot settings
+
+snaps = 1:100;   % Iterations for which incremental 
+                    % solutions will be computed and compared
+                    % on the test set in terms of accuracy
