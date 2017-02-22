@@ -36,13 +36,6 @@ maxLambdaExp = 2;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
 
 
-%% Alpha setting (only for recoding)
-
-% alphaArr = linspace(0,1,5);
-alphaArr = [0 0.7];
-numAlpha = numel(alphaArr);
-resultsArr = struct();
-recod_alpha_idx  = 2;
 
 %% Instantiate storage structures
 

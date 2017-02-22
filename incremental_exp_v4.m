@@ -16,8 +16,6 @@ numrep = 5;         % Number of repetitions of the experiment
 
 saveResult = 1;
 
-
-
 switch datasetName
     case 'MNIST'
         dataConf_MNIST_inc;
@@ -41,15 +39,6 @@ numLambdas = 20;
 minLambdaExp = -3;
 maxLambdaExp = 0;
 lrng = logspace(maxLambdaExp , minLambdaExp , numLambdas);
-
-
-%% Alpha setting (only for recoding)
-
-% alphaArr = linspace(0,1,5);
-alphaArr = [0, 0.6];
-numAlpha = numel(alphaArr);
-resultsArr = struct();
-recod_alpha_idx  = 2;
 
 
 %% Instantiate storage structures
@@ -606,7 +595,7 @@ for c = imbClassArr
 end
 
 
-%% Plots (averaged over classes)
+%% Plots (averaged over classes first, and then on repetitions)
 
 % Test error comparison plots
 
@@ -616,6 +605,7 @@ else
 
     % Overall Test Accuracy
 
+    % mean on class first, then on rep
     c2 = squeeze(mean(results(recod_alpha_idx).testAccBuf(:,:,:),2));
     c3 = squeeze(mean(results(1).testAccBuf(:,:,:),2));
 
@@ -624,7 +614,6 @@ else
 
     m_nai_tot_acc_te = mean(c3,1);
     s_nai_tot_acc_te = std(c3,[],1);
-
 
     for kk = 2: numAlpha
 
@@ -728,6 +717,178 @@ else
     end      
 
 end
+
+%% Plots (averaged over repetitions first, and then on classes)
+
+% Test error comparison plots
+
+if numrep == 1
+    warning('Plots only for numrep > 1');
+else
+
+    % Overall Test Accuracy
+
+    % mean on rep first, then on class
+    c2 = squeeze(mean(results(recod_alpha_idx).testAccBuf(:,:,:),1));
+    c3 = squeeze(mean(results(1).testAccBuf(:,:,:),1));
+
+    m_rec_tot_acc_te = mean(c2,2);
+    s_rec_tot_acc_te = std(c2,1,2);
+
+    m_nai_tot_acc_te = mean(c3,2);
+    s_nai_tot_acc_te = std(c3,1,2);
+
+
+    for kk = 2: numAlpha
+
+        figure
+
+        box on
+        grid on
+        hold on
+
+        h1 = bandplot(snaps,c3, ...
+            'r' , 0.1 , 0 , 1 , '-');
+        h2 = bandplot(snaps,c2, ...
+            'b' , 0.1 , 0 , 1 , '-');
+        xlabel('n_{imb}','FontSize',16)
+        ylabel('Overall Test Accuracy','FontSize',16)
+        hold off    
+    end
+
+
+    %%% Imbalanced Test Accuracy
+
+    % Mean on repetitions first
+    M2 = squeeze(mean(results(recod_alpha_idx).testCM(:, :, :, :, :),1));
+    M3 = squeeze(mean(results(1).testCM(:, :, :, :, :),1));
+    
+    % Vectorize on classes
+    c2=zeros(numel(imbClassArr),numSnaps);
+    c3=zeros(numel(imbClassArr),numSnaps);
+
+    for i = 1:numSnaps
+        for c_idx = 1:numel(imbClassArr)
+            c = imbClassArr(c_idx);
+
+            c2(c_idx,i) =  M2(c, i, c, c);
+            c3(c_idx,i) =  M3(c, i, c, c);
+        end   
+    end
+%     % Mean on classes
+%     c2=0;
+%     c3=0;
+% 
+%     for c_idx = 1:numel(imbClassArr)
+%         c = imbClassArr(c_idx);
+% 
+%         c2 = c2 + M2(c, :, c, c) / numel(imbClassArr);
+%         c3 = c3 + M2(c, :, c, c) / numel(imbClassArr);
+%     end
+    
+    % STD on classes
+
+%     s_rec_imb_acc_te = std(c2,[],1);
+%     s_nai_imb_acc_te = std(c3,[],1);
+    
+
+    % C = 28, separate figures for accuracy section
+    for kk = 2: numAlpha
+
+        figure
+
+        box on
+        grid on
+        hold on
+
+        h1 = bandplot(snaps,c3, ...
+            'r' , 0.1 , 0 , 1 , '-');
+        h2 = bandplot(snaps,c2, ...
+            'b' , 0.1 , 0 , 1 , '-');
+        xlabel('n_{imb}','FontSize',16)
+        ylabel('Imbalanced Test Accuracy','FontSize',16)
+        hold off    
+    end                
+
+
+    %%% Balanced Test Accuracy
+    
+    % Mean on repetitions first
+    
+    A2 = squeeze(mean(results(recod_alpha_idx).testAccBuf(:,:,:),1));
+    B2 = squeeze(mean(results(recod_alpha_idx).testCM(:,:,:, :, :),1));
+    
+    A3 = squeeze(mean(results(1).testAccBuf(:,:,:),1));
+    B3 = squeeze(mean(results(1).testCM(:,:,:, :, :),1));
+    
+    % Vectorize on classes
+    BB2=zeros(numel(imbClassArr),numSnaps);
+    BB3=zeros(numel(imbClassArr),numSnaps);
+
+    for i = 1:numSnaps
+        for c_idx = 1:numel(imbClassArr)
+            c = imbClassArr(c_idx);
+
+            BB2(c_idx,i) =  B2(c, i, c, c);
+            BB3(c_idx,i) =  B3(c, i, c, c);
+        end   
+    end    
+    
+    M2 = (t*A2 - BB2) / (t-1);    
+    M3 = (t*A3 - BB3) / (t-1);
+
+    
+    
+    %     %%% OLD
+% 
+%     a2=0;
+%     b3=0;
+%     c2=0;
+%     a3=0;
+%     b2=0;
+%     c3=0;
+% 
+%     for c_idx = 1:numel(imbClassArr)
+%         c = imbClassArr(c_idx);
+% 
+%         a2 = squeeze(results(recod_alpha_idx).testAccBuf(:,c,:));
+%         b2 = squeeze(results(recod_alpha_idx).testCM(:,c,:, c, c));
+%         c2 = c2 + ((t*a2 - b2) / (t-1)) / numel(imbClassArr);
+% 
+%         a3 = squeeze(results(1).testAccBuf(:,c,:));
+%         b3 = squeeze(results(1).testCM(:,c,:, c, c));
+%         c3 = c3 + ((t*a3 - b3) / (t-1)) / numel(imbClassArr);
+%     end        
+% 
+%     m_rec_bal_acc_te = mean(c2,1);
+%     s_rec_bal_acc_te = std(c2,[],1);
+% 
+%     m_nai_bal_acc_te = mean(c3,1);
+%     s_nai_bal_acc_te = std(c3,[],1);
+
+
+    % C != 28, separate figures for accuracy section
+    for kk = 2: numAlpha
+
+        figure
+
+        box on
+        grid on
+        hold on
+
+        h1 = bandplot(snaps,M3, ...
+            'r' , 0.1 , 0 , 1 , '-');
+        h2 = bandplot(snaps,M2, ...
+            'b' , 0.1 , 0 , 1 , '-');
+        xlabel('n_{imb}','FontSize',16)
+        ylabel('Balanced Test Accuracy','FontSize',16)
+        hold off    
+    end      
+
+end
+
+
+
 
 
 %% Save figures

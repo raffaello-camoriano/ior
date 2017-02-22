@@ -77,6 +77,14 @@ testClassNum = [];
 % trainClassFreq = [];
 % testClassFreq = [];
 
+%% Alpha setting (only for recoding)
+
+% alphaArr = linspace(0,1,5);
+alphaArr = [0, 0.6];
+numAlpha = numel(alphaArr);
+resultsArr = struct();
+recod_alpha_idx  = 2;
+
 %% Snapshot settings
 
 snaps = 1:100;   % Iterations for which incremental 
