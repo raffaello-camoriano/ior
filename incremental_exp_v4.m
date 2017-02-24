@@ -8,8 +8,8 @@ run_inc_rlsc_yesrec = 1;    % Incremental RLSC with recoding
 computeTestAcc = 1;     % flag for test accuracy computation
 
 trainPart = 0.8;    % Training set part
-maxiter = 500;     % Maximum number of updates
-numrep = 5;         % Number of repetitions of the experiment
+maxiter = 500;      % Maximum number of updates
+numrep = 4;         % Number of repetitions of the experiment
 
 % maxiter = 1000;     % Maximum number of updates
 % numrep = 5;         % Number of repetitions of the experiment
@@ -60,6 +60,8 @@ for k = 1:numrep
     
     clc
     display(['Repetition # ', num2str(k), ' of ' , num2str(numrep)]);
+    display(' ');
+    display(['alpha = ', num2str(alphaArr)]);
     display(' ');
 	progressBar(k,numrep);
     display(' ');
@@ -368,6 +370,15 @@ for k = 1:numrep
             end
         end
     end
+    
+
+    %% Save workspace
+
+    if saveResult == 1
+
+        save([resdir '/workspace.mat'] , '-v7.3');
+    end    
+    
 end
 
 
